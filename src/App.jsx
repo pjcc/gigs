@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 import {
   getSavedSession,
   saveSession,
@@ -10,14 +10,14 @@ import {
   removeGig,
   addPerson,
   buildDiffSummary,
-} from './services/api.js';
-import Header from './components/Header.jsx';
-import LoginScreen from './components/LoginScreen.jsx';
-import GigList from './components/GigList.jsx';
-import GigForm from './components/GigForm.jsx';
-import HistoryView from './components/HistoryView.jsx';
-import Modal from './components/Modal.jsx';
-import Toast from './components/Toast.jsx';
+} from "./services/api.js";
+import Header from "./components/Header.jsx";
+import LoginScreen from "./components/LoginScreen.jsx";
+import GigList from "./components/GigList.jsx";
+import GigForm from "./components/GigForm.jsx";
+import HistoryView from "./components/HistoryView.jsx";
+import Modal from "./components/Modal.jsx";
+import Toast from "./components/Toast.jsx";
 
 export default function App() {
   // Session: { name, password } or null
@@ -25,35 +25,36 @@ export default function App() {
   const [initialising, setInitialising] = useState(true);
   const [loginError, setLoginError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [gigs, setGigs] = useState([]);
   const [people, setPeople] = useState([]);
   const [history, setHistory] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingGig, setEditingGig] = useState(null);
   const [deletingGig, setDeletingGig] = useState(null);
-  const [view, setView] = useState('cards');
+  const [view, setView] = useState("cards");
   const [toast, setToast] = useState(null);
   const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('gig-tracker-theme');
-    return saved || 'dark';
+    const saved = localStorage.getItem("gig-tracker-theme");
+    return saved || "dark";
   });
 
   // Apply theme
   useEffect(() => {
-    if (theme === 'light') {
-      document.documentElement.setAttribute('data-theme', 'light');
+    if (theme === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
     } else {
-      document.documentElement.removeAttribute('data-theme');
+      document.documentElement.removeAttribute("data-theme");
     }
-    localStorage.setItem('gig-tracker-theme', theme);
+    localStorage.setItem("gig-tracker-theme", theme);
   }, [theme]);
 
   function toggleTheme() {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   }
 
   // Toasts
-  const showToast = useCallback((message, type = 'info') => {
+  const showToast = useCallback((message, type = "info") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
@@ -82,13 +83,13 @@ export default function App() {
       setPeople(data.people);
       setHistory(data.history);
     } catch (err) {
-      console.error('Load error:', err);
-      if (err.message?.includes('Invalid password')) {
+      console.error("Load error:", err);
+      if (err.message?.includes("Invalid password")) {
         clearSession();
         setSession(null);
-        setLoginError('Session expired. Please sign in again.');
+        setLoginError("Session expired. Please sign in again.");
       } else if (!silent) {
-        showToast('Failed to load data', 'error');
+        showToast("Failed to load data", "error");
       }
     } finally {
       if (!silent) setLoading(false);
@@ -105,11 +106,11 @@ export default function App() {
         saveSession(name, password);
         setSession({ name, password });
       } else {
-        setLoginError('Incorrect password');
+        setLoginError("Incorrect password");
       }
     } catch (err) {
-      console.error('Login error:', err);
-      setLoginError('Could not connect. Check the script URL.');
+      console.error("Login error:", err);
+      setLoginError("Could not connect. Check the script URL.");
     }
   }
 
@@ -135,21 +136,17 @@ export default function App() {
       // Sync to get the real rowIndex
       loadData(true);
     } catch (err) {
-      console.error('Add error:', err);
-      showToast('Failed to save - refreshing...', 'error');
+      console.error("Add error:", err);
+      showToast("Failed to save - refreshing...", "error");
       loadData(true);
     }
   }
 
   async function handleUpdateGig(gig) {
-    const summary = editingGig
-      ? buildDiffSummary(editingGig, gig)
-      : 'Updated';
+    const summary = editingGig ? buildDiffSummary(editingGig, gig) : "Updated";
 
     // Optimistic: update local state, close modal
-    setGigs((prev) =>
-      prev.map((g) => (g.rowIndex === gig.rowIndex ? { ...gig } : g))
-    );
+    setGigs((prev) => prev.map((g) => (g.rowIndex === gig.rowIndex ? { ...gig } : g)));
     setEditingGig(null);
     setShowForm(false);
     showToast(`Updated "${gig.band}"`);
@@ -157,8 +154,8 @@ export default function App() {
     try {
       await updateGig(session.password, session.name, gig, summary);
     } catch (err) {
-      console.error('Update error:', err);
-      showToast('Failed to save - refreshing...', 'error');
+      console.error("Update error:", err);
+      showToast("Failed to save - refreshing...", "error");
       loadData(true);
     }
   }
@@ -178,20 +175,20 @@ export default function App() {
       // Sync to fix row indices after deletion
       loadData(true);
     } catch (err) {
-      console.error('Delete error:', err);
-      showToast('Failed to delete - refreshing...', 'error');
+      console.error("Delete error:", err);
+      showToast("Failed to delete - refreshing...", "error");
       loadData(true);
     }
   }
 
   async function handleAddPerson(name) {
     // Optimistic: update state immediately
-    setPeople((prev) => prev.includes(name) ? prev : [...prev, name]);
+    setPeople((prev) => (prev.includes(name) ? prev : [...prev, name]));
     try {
       await addPerson(session.password, name);
     } catch (err) {
-      console.error('Add person error:', err);
-      showToast('Failed to save person', 'error');
+      console.error("Add person error:", err);
+      showToast("Failed to save person", "error");
     }
   }
 
@@ -225,7 +222,12 @@ export default function App() {
           setShowForm(true);
         }}
         onSignOut={handleSignOut}
-        onRefresh={loadData}
+        onRefresh={async () => {
+          setRefreshing(true);
+          await loadData(true);
+          setRefreshing(false);
+        }}
+        refreshing={refreshing}
         view={view}
         onViewChange={setView}
         theme={theme}
@@ -238,7 +240,7 @@ export default function App() {
           <div className="spinner" />
           Loading gigs...
         </div>
-      ) : view === 'history' ? (
+      ) : view === "history" ? (
         <HistoryView history={history} />
       ) : (
         <GigList
@@ -259,14 +261,14 @@ export default function App() {
       {/* Add/Edit Modal */}
       {showForm && (
         <Modal
-          title={editingGig ? 'Edit Gig' : 'Add Gig'}
+          title={editingGig ? "Edit Gig" : "Add Gig"}
           onClose={() => {
             setShowForm(false);
             setEditingGig(null);
           }}
         >
           <GigForm
-            key={editingGig ? `edit-${editingGig.rowIndex}` : 'add'}
+            key={editingGig ? `edit-${editingGig.rowIndex}` : "add"}
             gig={editingGig}
             people={people}
             onSubmit={editingGig ? handleUpdateGig : handleAddGig}
@@ -281,19 +283,13 @@ export default function App() {
 
       {/* Delete Confirm Modal */}
       {deletingGig && (
-        <Modal
-          title="Delete Gig"
-          onClose={() => setDeletingGig(null)}
-        >
+        <Modal title="Delete Gig" onClose={() => setDeletingGig(null)}>
           <div className="confirm-delete">
             <p>Are you sure you want to delete this gig?</p>
             <p className="band-name">{deletingGig.band}</p>
           </div>
-          <div className="modal-footer" style={{ borderTop: 'none', paddingTop: 0 }}>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setDeletingGig(null)}
-            >
+          <div className="modal-footer" style={{ borderTop: "none", paddingTop: 0 }}>
+            <button className="btn btn-secondary" onClick={() => setDeletingGig(null)}>
               Cancel
             </button>
             <button className="btn btn-primary" onClick={handleDeleteGig}>
