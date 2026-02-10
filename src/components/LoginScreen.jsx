@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 export default function LoginScreen({ onLogin, error }) {
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
@@ -16,9 +16,7 @@ export default function LoginScreen({ onLogin, error }) {
   return (
     <div className="auth-screen">
       <h1>Gig Tracker</h1>
-      <p>
-        Track upcoming gigs, who's interested, and who's bought tickets.
-      </p>
+      <p>Track upcoming gigs, who's interested, and who's bought tickets.</p>
       <form onSubmit={handleSubmit} className="login-form">
         <div className="form-group">
           <label className="form-label">Your Name</label>
@@ -27,7 +25,7 @@ export default function LoginScreen({ onLogin, error }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Piers"
+            placeholder="e.g. Jules"
             autoFocus
             required
           />
@@ -48,9 +46,9 @@ export default function LoginScreen({ onLogin, error }) {
           type="submit"
           className="btn btn-primary"
           disabled={!name.trim() || !password || submitting}
-          style={{ width: '100%', justifyContent: 'center' }}
+          style={{ width: "100%", justifyContent: "center" }}
         >
-          {submitting ? 'Checking...' : 'Sign in'}
+          {submitting ? "Checking..." : "Sign in"}
         </button>
       </form>
     </div>
