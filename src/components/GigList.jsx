@@ -1,5 +1,6 @@
-import GigCard from './GigCard.jsx';
-import GigTable from './GigTable.jsx';
+import { useState } from "react";
+import GigCard from "./GigCard.jsx";
+import GigTable from "./GigTable.jsx";
 
 function isUpcoming(dateStr) {
   if (!dateStr) return true;
@@ -17,7 +18,9 @@ function sortByDate(gigs) {
   });
 }
 
-export default function GigList({ gigs, view, onEdit, onDelete, onAdd }) {
+export default function GigList({ gigs, view, onEdit, onDelete, onAdd, changedGigs }) {
+  const [pastOpen, setPastOpen] = useState(false);
+
   if (gigs.length === 0) {
     return (
       <div className="empty-state">
@@ -35,15 +38,8 @@ export default function GigList({ gigs, view, onEdit, onDelete, onAdd }) {
   const upcoming = sorted.filter((g) => isUpcoming(g.date));
   const past = sorted.filter((g) => !isUpcoming(g.date)).reverse();
 
-  if (view === 'table') {
-    return (
-      <GigTable
-        upcoming={upcoming}
-        past={past}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />
-    );
+  if (view === "table") {
+    return <GigTable upcoming={upcoming} past={past} onEdit={onEdit} onDelete={onDelete} />;
   }
 
   return (
@@ -59,6 +55,7 @@ export default function GigList({ gigs, view, onEdit, onDelete, onAdd }) {
                 key={`${gig.rowIndex}-${gig.band}`}
                 gig={gig}
                 past={false}
+                changeType={changedGigs[gig.band] || null}
                 onEdit={() => onEdit(gig)}
                 onDelete={() => onDelete(gig)}
               />
@@ -69,20 +66,24 @@ export default function GigList({ gigs, view, onEdit, onDelete, onAdd }) {
 
       {past.length > 0 && (
         <section className="gig-section">
-          <h2 className="gig-section-title">
+          <h2 className="gig-section-title gig-section-toggle" onClick={() => setPastOpen(!pastOpen)}>
+            <span className={`toggle-arrow${pastOpen ? " open" : ""}`}>&#9654;</span>
             Past <span className="count">{past.length}</span>
           </h2>
-          <div className="gig-grid">
-            {past.map((gig) => (
-              <GigCard
-                key={`${gig.rowIndex}-${gig.band}`}
-                gig={gig}
-                past={true}
-                onEdit={() => onEdit(gig)}
-                onDelete={() => onDelete(gig)}
-              />
-            ))}
-          </div>
+          {pastOpen && (
+            <div className="gig-grid">
+              {past.map((gig) => (
+                <GigCard
+                  key={`${gig.rowIndex}-${gig.band}`}
+                  gig={gig}
+                  past={true}
+                  changeType={changedGigs[gig.band] || null}
+                  onEdit={() => onEdit(gig)}
+                  onDelete={() => onDelete(gig)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
     </div>

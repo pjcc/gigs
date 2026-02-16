@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getSavedSession,
   saveSession,
@@ -10,6 +10,8 @@ import {
   removeGig,
   addPerson,
   buildDiffSummary,
+  logEvent,
+  logVisitIfStale,
 } from "./services/api.js";
 import Header from "./components/Header.jsx";
 import LoginScreen from "./components/LoginScreen.jsx";
@@ -25,7 +27,6 @@ export default function App() {
   const [initialising, setInitialising] = useState(true);
   const [loginError, setLoginError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [gigs, setGigs] = useState([]);
   const [people, setPeople] = useState([]);
   const [history, setHistory] = useState([]);
@@ -34,10 +35,53 @@ export default function App() {
   const [deletingGig, setDeletingGig] = useState(null);
   const [view, setView] = useState("cards");
   const [toast, setToast] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastSeen, setLastSeen] = useState(() => {
+    return localStorage.getItem("gig-tracker-last-seen") || "0";
+  });
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem("gig-tracker-theme");
     return saved || "dark";
   });
+
+  // Compute unseen changes by other users since lastSeen
+  const unseenChanges = useMemo(() => {
+    if (!session || !history.length) return [];
+    return history.filter((h) => {
+      if (!h.timestamp) return false;
+      // Only count gig actions by other users
+      const isGigAction = h.action === "Added" || h.action === "Edited" || h.action === "Deleted";
+      const isOtherUser = String(h.user || "").toLowerCase() !== session.name.toLowerCase();
+      const isNew = h.timestamp > lastSeen;
+      return isGigAction && isOtherUser && isNew;
+    });
+  }, [history, session, lastSeen]);
+
+  // Map of band name -> most recent change type for card highlights
+  const changedGigs = useMemo(() => {
+    const map = {};
+    // unseenChanges is newest-first, so first match per band wins
+    for (const entry of unseenChanges) {
+      const key = entry.band;
+      if (key && !map[key]) {
+        map[key] = entry.action;
+      }
+    }
+    return map;
+  }, [unseenChanges]);
+
+  function markAsSeen() {
+    const now = new Date().toISOString();
+    setLastSeen(now);
+    localStorage.setItem("gig-tracker-last-seen", now);
+  }
+
+  function handleViewChange(newView) {
+    if (newView === "history") {
+      markAsSeen();
+    }
+    setView(newView);
+  }
 
   // Apply theme
   useEffect(() => {
@@ -64,6 +108,7 @@ export default function App() {
     const saved = getSavedSession();
     if (saved) {
       setSession(saved);
+      logVisitIfStale(saved.password, saved.name);
     }
     setInitialising(false);
   }, []);
@@ -105,6 +150,7 @@ export default function App() {
       if (valid) {
         saveSession(name, password);
         setSession({ name, password });
+        logEvent(password, name, "Logged in", "");
       } else {
         setLoginError("Incorrect password");
       }
@@ -229,10 +275,11 @@ export default function App() {
         }}
         refreshing={refreshing}
         view={view}
-        onViewChange={setView}
+        onViewChange={handleViewChange}
         theme={theme}
         onThemeToggle={toggleTheme}
         userName={session.name}
+        unseenCount={unseenChanges.length}
       />
 
       {loading ? (
@@ -246,6 +293,7 @@ export default function App() {
         <GigList
           gigs={gigs}
           view={view}
+          changedGigs={changedGigs}
           onEdit={(gig) => {
             setEditingGig(gig);
             setShowForm(true);

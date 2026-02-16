@@ -14,18 +14,27 @@ function formatPrice(price) {
   return `\u00A3${Number(price).toFixed(2)}`;
 }
 
-export default function GigCard({ gig, past, onEdit, onDelete }) {
+export default function GigCard({ gig, past, onEdit, onDelete, changeType }) {
   const hasInterested = gig.interested.length > 0;
   const hasTickets = gig.ticketsBought.length > 0;
   const hasNotes = gig.notes && gig.notes.trim();
   const hasLink = gig.link && gig.link.trim();
   const price = formatPrice(gig.price);
 
+  let cardClass = "gig-card";
+  if (past) cardClass += " past";
+  if (changeType) cardClass += " gig-changed";
+
+  const badgeLabel = changeType === "Added" ? "NEW" : changeType === "Edited" ? "UPDATED" : null;
+
   return (
-    <div className={`gig-card${past ? " past" : ""}`}>
+    <div className={cardClass}>
       {/* Row 1: Band name + actions */}
       <div className="gig-card-header">
-        <div className="gig-band">{gig.band}</div>
+        <div className="gig-band">
+          {gig.band}
+          {badgeLabel && <span className={"gig-change-badge " + (changeType === "Added" ? "new" : "updated")}>{badgeLabel}</span>}
+        </div>
         <div className="gig-card-actions">
           <button className="btn-icon" onClick={onEdit} title="Edit">
             <svg
