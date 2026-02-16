@@ -1,6 +1,6 @@
-import { useState } from "react";
-import GigCard from "./GigCard.jsx";
-import GigTable from "./GigTable.jsx";
+import { useState } from 'react';
+import GigCard from './GigCard.jsx';
+import GigTable from './GigTable.jsx';
 
 function isUpcoming(dateStr) {
   if (!dateStr) return true;
@@ -38,8 +38,15 @@ export default function GigList({ gigs, view, onEdit, onDelete, onAdd, changedGi
   const upcoming = sorted.filter((g) => isUpcoming(g.date));
   const past = sorted.filter((g) => !isUpcoming(g.date)).reverse();
 
-  if (view === "table") {
-    return <GigTable upcoming={upcoming} past={past} onEdit={onEdit} onDelete={onDelete} />;
+  if (view === 'table') {
+    return (
+      <GigTable
+        upcoming={upcoming}
+        past={past}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    );
   }
 
   return (
@@ -66,8 +73,11 @@ export default function GigList({ gigs, view, onEdit, onDelete, onAdd, changedGi
 
       {past.length > 0 && (
         <section className="gig-section">
-          <h2 className="gig-section-title gig-section-toggle" onClick={() => setPastOpen(!pastOpen)}>
-            <span className={`toggle-arrow${pastOpen ? " open" : ""}`}>&#9654;</span>
+          <h2
+            className="gig-section-title gig-section-toggle"
+            onClick={() => setPastOpen(!pastOpen)}
+          >
+            <span className={`toggle-arrow${pastOpen ? ' open' : ''}`}>&#9654;</span>
             Past <span className="count">{past.length}</span>
           </h2>
           {pastOpen && (
