@@ -15,7 +15,7 @@ export default function LoginScreen({ onLogin, error }) {
 
   return (
     <div className="auth-screen">
-      <h1>Gig Tracker</h1>
+      <h1>Gigsheet max</h1>
       <p>Track upcoming gigs, who's interested, and who's bought tickets.</p>
       <form onSubmit={handleSubmit} className="login-form">
         <div className="form-group">
@@ -25,7 +25,7 @@ export default function LoginScreen({ onLogin, error }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Jules"
+            placeholder="e.g. Piers"
             autoFocus
             required
           />

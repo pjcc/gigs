@@ -106,6 +106,8 @@ function handleRequest(payload) {
       return deleteGig(payload);
     case 'addPerson':
       return addPerson(payload);
+    case 'logEvent':
+      return logEvent(payload);
     default:
       return { ok: false, error: 'Unknown action: ' + action };
   }
@@ -260,6 +262,14 @@ function addPerson(payload) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(PEOPLE_SHEET);
   sheet.appendRow([payload.name]);
+  return { ok: true };
+}
+
+// ---- Events ----
+
+function logEvent(payload) {
+  ensureSheets();
+  logHistory(payload.user || 'unknown', payload.eventType || 'Event', '', payload.summary || '');
   return { ok: true };
 }
 

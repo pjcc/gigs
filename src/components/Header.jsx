@@ -36,38 +36,103 @@ const MoonIcon = () => (
   </svg>
 );
 
-export default function Header({ onAdd, onSignOut, onRefresh, view, onViewChange, theme, onThemeToggle, userName, refreshing }) {
+const linkStyle = {
+  fontSize: "0.75rem",
+  color: "var(--text-light)",
+  textDecoration: "none",
+};
+
+const sepStyle = {
+  fontSize: "0.75rem",
+  color: "var(--text-light)",
+};
+
+function HeaderLink({ href, children }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={linkStyle}
+      onMouseEnter={function (e) {
+        e.target.style.color = "var(--text-muted)";
+      }}
+      onMouseLeave={function (e) {
+        e.target.style.color = "var(--text-light)";
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+export default function Header({
+  onAdd,
+  onSignOut,
+  onRefresh,
+  view,
+  onViewChange,
+  theme,
+  onThemeToggle,
+  userName,
+  refreshing,
+  unseenCount,
+}) {
   return (
     <header className="header">
-      <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
+      <div className="header-top-row">
         <h1>Gigsheet max</h1>
-        <a
-          href="https://docs.google.com/spreadsheets/d/1LnB95ltEkXCzc2v-I3w2XYF51dWPTbs2jJP0Ns-h4qU/edit?gid=1940085950#gid=1940085950"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: "0.75rem", color: "var(--text-light)", textDecoration: "none" }}
-          onMouseEnter={(e) => (e.target.style.color = "var(--text-muted)")}
-          onMouseLeave={(e) => (e.target.style.color = "var(--text-light)")}
-        >
+        <button className="btn btn-ghost btn-sm" onClick={onSignOut}>
+          {userName} — Sign out
+        </button>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "-4px" }}>
+        <HeaderLink href="https://docs.google.com/spreadsheets/d/1LnB95ltEkXCzc2v-I3w2XYF51dWPTbs2jJP0Ns-h4qU/edit?gid=1940085950#gid=1940085950">
           source
-        </a>
+        </HeaderLink>
+        <span style={sepStyle}>/</span>
+        <HeaderLink href="https://www.rivalcults.com/gigs">rivalcults</HeaderLink>
+        <span style={sepStyle}>/</span>
+        <HeaderLink href="https://docs.google.com/spreadsheets/d/10bPCFonO7jVnXkzpXPcaVxzJwS1iFlJkzsQSRvOYYZo/edit?gid=0#gid=0">
+          scraped
+        </HeaderLink>
       </div>
       <div className="header-actions">
         <div className="view-toggle">
-          <button className={view === "cards" ? "active" : ""} onClick={() => onViewChange("cards")} title="Card view">
+          <button
+            className={view === "cards" ? "active" : ""}
+            onClick={function () {
+              onViewChange("cards");
+            }}
+            title="Card view"
+          >
             Cards
           </button>
-          <button className={view === "table" ? "active" : ""} onClick={() => onViewChange("table")} title="Table view">
+          <button
+            className={view === "table" ? "active" : ""}
+            onClick={function () {
+              onViewChange("table");
+            }}
+            title="Table view"
+          >
             Table
           </button>
-          <button className={view === "history" ? "active" : ""} onClick={() => onViewChange("history")} title="Edit history">
+          <button
+            className={view === "history" ? "active" : ""}
+            onClick={function () {
+              onViewChange("history");
+            }}
+            title="Edit history"
+            style={{ position: "relative" }}
+          >
             History
+            {unseenCount > 0 && view !== "history" && <span className="unseen-badge">{unseenCount}</span>}
           </button>
         </div>
-        <button className="theme-toggle" onClick={onThemeToggle} title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+        <button className="theme-toggle" onClick={onThemeToggle} title={"Switch to " + (theme === "dark" ? "light" : "dark") + " mode"}>
           {theme === "dark" ? <SunIcon /> : <MoonIcon />}
         </button>
-        <button className={`btn-icon${refreshing ? " spinning" : ""}`} onClick={onRefresh} title="Refresh data">
+        <button className={"btn-icon" + (refreshing ? " spinning" : "")} onClick={onRefresh} title="Refresh data">
           <svg
             width="16"
             height="16"
@@ -85,9 +150,6 @@ export default function Header({ onAdd, onSignOut, onRefresh, view, onViewChange
         </button>
         <button className="btn btn-primary" onClick={onAdd}>
           + Add Gig
-        </button>
-        <button className="btn btn-ghost btn-sm" onClick={onSignOut}>
-          {userName} — Sign out
         </button>
       </div>
     </header>
