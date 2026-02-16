@@ -7,7 +7,7 @@
 }
 
 :root {
-  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -34,7 +34,7 @@
   --calendar-icon-filter: invert(1);
 }
 
-[data-theme="light"] {
+[data-theme='light'] {
   --bg: #faf8f4;
   --bg-card: #ffffff;
   --bg-card-past: #f4f2ee;
@@ -67,9 +67,7 @@ body {
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
-  transition:
-    background 0.3s ease,
-    color 0.3s ease;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* ---- Layout ---- */
@@ -283,6 +281,10 @@ body {
   margin-right: 10px;
 }
 
+.btn-icon.spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -296,7 +298,7 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .view-toggle button {
@@ -392,19 +394,11 @@ body {
   letter-spacing: 0.05em;
   padding: 1px 6px;
   border-radius: 3px;
+  background: var(--accent-light);
+  color: var(--accent);
   margin-left: 8px;
   vertical-align: middle;
   line-height: 1.6;
-}
-
-.gig-change-badge.new {
-  background: var(--teal-light);
-  color: var(--teal);
-}
-
-.gig-change-badge.updated {
-  background: var(--accent-light);
-  color: var(--accent);
 }
 
 .unseen-badge {
@@ -746,9 +740,7 @@ body {
   font-size: 0.9rem;
   color: var(--text);
   background: var(--bg);
-  transition:
-    border-color var(--transition),
-    box-shadow var(--transition);
+  transition: border-color var(--transition), box-shadow var(--transition);
   outline: none;
 }
 
@@ -779,7 +771,7 @@ body {
 }
 
 .form-input-prefix::before {
-  content: "\00A3";
+  content: '\00A3';
   position: absolute;
   left: 14px;
   top: 50%;
@@ -873,7 +865,7 @@ body {
   background: var(--border-light);
 }
 
-.person-option input[type="checkbox"] {
+.person-option input[type='checkbox'] {
   accent-color: var(--accent);
   width: 15px;
   height: 15px;
@@ -1083,6 +1075,7 @@ body {
 
   .gig-card-actions {
     opacity: 1;
+    margin-left: auto;
   }
 
   .gig-meta {
@@ -1101,6 +1094,6 @@ body {
 
 /* ---- Date input icon for dark mode ---- */
 
-input[type="date"]::-webkit-calendar-picker-indicator {
+input[type='date']::-webkit-calendar-picker-indicator {
   filter: var(--calendar-icon-filter);
 }
