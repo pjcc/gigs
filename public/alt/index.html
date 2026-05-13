@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Alt Escape — Brighton 15-17 May 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300..700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #1a1a1e;
+      --bg-card: #242428;
+      --bg-card-hi: #2e2e34;
+      --text: #e8e6e3;
+      --text-muted: #9a9894;
+      --text-faint: #6a6864;
+      --accent: #d95738;
+      --accent-soft: rgba(217, 87, 56, 0.18);
+      --teal: #4ecdc4;
+      --border: #35353a;
+      --border-light: #2c2c30;
+      --gutter-w: 56px;
+      --venue-w: 168px;
+      --hour-h: 64px;
+      --header-h: 38px;
+    }
+
+    html, body { background: var(--bg); color: var(--text); font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+    body { min-height: 100vh; display: flex; flex-direction: column; }
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--bg);
+      padding: 14px 20px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .topbar .sub {
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .controls {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      align-items: center;
+    }
+    .day-tab, .pill {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .day-tab:hover, .pill:hover { color: var(--text); border-color: var(--text-muted); }
+    .day-tab.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .pill.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+    .saved-count { color: var(--accent); font-weight: 600; }
+    .spacer { flex: 1; }
+
+    .grid-wrap {
+      flex: 1;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: var(--gutter-w) repeat(var(--ncols), var(--venue-w));
+      min-height: 100%;
+    }
+
+    .gutter, .venue-col {
+      border-right: 1px solid var(--border-light);
+      position: relative;
+    }
+    .gutter-header, .venue-header {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: var(--bg);
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 0 6px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border-light);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .gutter-header { color: var(--text-muted); font-size: 11px; }
+    .venue-header { color: var(--text); line-height: 1.15; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+    .venue-header:hover { background: var(--bg-card-hi); }
+    .venue-col.venue-saved .venue-header {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .venue-col.venue-saved .venue-body {
+      background-color: rgba(217, 87, 56, 0.04);
+    }
+    .gutter { position: sticky; left: 0; z-index: 4; background: var(--bg); }
+    .gutter-header { z-index: 6; background: var(--bg); }
+
+    .gutter-body, .venue-body {
+      position: relative;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        var(--border-light) 0 1px,
+        transparent 1px var(--hour-h)
+      );
+    }
+
+    .hour-label {
+      position: absolute;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-faint);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+    .hour-label.major { color: var(--text-muted); font-weight: 500; }
+
+    .event {
+      position: absolute;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 8px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .event:hover { background: var(--bg-card-hi); border-color: var(--text-faint); }
+    .event.saved {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+    .event.saved .event-name { color: var(--text); }
+    .event-name {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.22;
+      color: var(--text);
+    }
+    .event-time {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .event-lineup {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .event-lineup-list {
+      list-style: none;
+      margin: 4px 0 0;
+      padding: 0;
+      font-size: 10px;
+      line-height: 1.4;
+      color: var(--text-muted);
+    }
+    .event-lineup-list li {
+      display: flex;
+      gap: 6px;
+      padding: 1px 0;
+    }
+    .lineup-time {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-faint);
+      flex: 0 0 36px;
+    }
+    .lineup-name {
+      flex: 1;
+      color: var(--text-muted);
+    }
+    .lineup-name.untimed {
+      color: var(--text-faint);
+      font-style: italic;
+    }
+
+    .event.untimed {
+      border-style: dashed;
+      border-color: var(--text-faint);
+    }
+    .event.untimed .event-time::after {
+      content: "no time announced";
+      color: var(--text-faint);
+      font-style: italic;
+    }
+
+    .empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 460px;
+      max-height: 86vh;
+      overflow: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+      animation: pop 0.15s ease-out;
+    }
+    @keyframes pop {
+      from { transform: scale(0.96); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .modal-head {
+      padding: 18px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .modal-title {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+    .modal-close {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 18px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close:hover { background: var(--border); color: var(--text); }
+    .modal-body { padding: 14px 20px 6px; }
+    .modal-row {
+      display: flex;
+      gap: 10px;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    .modal-row .label {
+      flex: 0 0 70px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      padding-top: 3px;
+    }
+    .modal-row .value { flex: 1; color: var(--text); }
+    .modal-row .value a { color: var(--teal); word-break: break-all; }
+    .modal-lineup {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .modal-lineup li {
+      display: flex;
+      gap: 8px;
+      padding: 3px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .modal-lineup li:last-child { border-bottom: none; }
+    .modal-lineup .lt {
+      flex: 0 0 52px;
+      color: var(--text-faint);
+      font-variant-numeric: tabular-nums;
+    }
+    .modal-lineup .ln { flex: 1; color: var(--text); }
+    .modal-lineup .ln.untimed { color: var(--text-muted); font-style: italic; }
+    .modal-notes {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      padding: 8px 10px;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--border-light);
+    }
+    .modal-foot {
+      padding: 14px 20px 18px;
+      display: flex;
+      gap: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .modal-foot .btn {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+    }
+    .modal-foot .btn-fav {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .modal-foot .btn-fav:hover { background: var(--accent-hover, #e5654a); }
+    .modal-foot .btn-fav.is-saved {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .modal-foot .btn-link {
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .modal-foot .btn-link:hover { color: var(--text); border-color: var(--text-muted); }
+
+    .legend {
+      padding: 10px 20px;
+      font-size: 11px;
+      color: var(--text-faint);
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .legend a { color: var(--text-muted); }
+
+    @media (max-width: 720px) {
+      :root { --venue-w: 132px; --hour-h: 56px; --gutter-w: 48px; }
+      .topbar { padding: 10px 12px 8px; }
+      .topbar h1 { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Alt Escape — Brighton 15–17 May 2026</h1>
+    <div class="sub">Unofficial gigs around Great Escape weekend. Tap a block to save it.</div>
+    <div class="controls">
+      <button class="day-tab active" data-day="Fri">Fri 15</button>
+      <button class="day-tab" data-day="Sat">Sat 16</button>
+      <button class="day-tab" data-day="Sun">Sun 17</button>
+      <span class="spacer"></span>
+      <button class="pill" id="toggle-saved">Saved gigs <span class="saved-count" id="saved-count">0</span></button>
+      <button class="pill" id="toggle-saved-venues">Saved venues <span class="saved-count" id="saved-venues-count">0</span></button>
+      <button class="pill" id="clear-saved">Clear all</button>
+    </div>
+  </div>
+
+  <div class="grid-wrap" id="grid-wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="legend">
+    Data from Brighton Music Blog, Rival Cults, Clashfinder &amp; Instagram captions. Times approximate. <span id="counts"></span>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" id="modal" role="document"></div>
+  </div>
+
+  <script>
+    const EVENTS = [{"id":"F-PE-GE","date":"2026-05-15","day":"Fri","venue":"Presuming Eds","event":"Gnarly Escape","parentEvent":null,"start":"","end":"","lineupRaw":"Luke Dimambro | Bones Ate Arfa | Atticomatic | Speedial Band | Shtepi Music | Hot Face | Ryan Poulter | Moon Idle | Kitchen Lover Band | Martial Arts Band | Shaking Hand | Had Sandy Bandy","lineup":[{"name":"Luke Dimambro","time":null,"startMin":null},{"name":"Bones Ate Arfa","time":null,"startMin":null},{"name":"Atticomatic","time":null,"startMin":null},{"name":"Speedial Band","time":null,"startMin":null},{"name":"Shtepi Music","time":null,"startMin":null},{"name":"Hot Face","time":null,"startMin":null},{"name":"Ryan Poulter","time":null,"startMin":null},{"name":"Moon Idle","time":null,"startMin":null},{"name":"Kitchen Lover Band","time":null,"startMin":null},{"name":"Martial Arts Band","time":null,"startMin":null},{"name":"Shaking Hand","time":null,"startMin":null},{"name":"Had Sandy Bandy","time":null,"startMin":null}],"tickets":"","link":"https://www.instagram.com/p/DXj4cI0jYKE/","notes":"Multi-night Fri+Sat. Lineup not found via web — try IG. · Some secret bonus bands also TBA"},{"id":"F-PE-EDS","date":"2026-05-15","day":"Fri","venue":"Presuming Eds","event":"The Great Edscape 9-1","parentEvent":null,"start":"21:00","end":"01:00","lineupRaw":"Goe Official | Two Pounds Down | Ristretto | Thimble","lineup":[{"name":"Goe Official","time":null,"startMin":null},{"name":"Two Pounds Down","time":null,"startMin":null},{"name":"Ristretto","time":null,"startMin":null},{"name":"Thimble","time":null,"startMin":null}],"tickets":"","link":"https://www.instagram.com/p/DXpBppfiFOg/","notes":"Times from event name. Lineup TBD via IG. · Experimental psychedelia, jazz, funk blend. No wristbands."},{"id":"F-FM-BITW","date":"2026-05-15","day":"Fri","venue":"Brighton Fishing Museum","event":"Back in the Woods (Alt Alt Escape)","parentEvent":null,"start":"","end":"","lineupRaw":"AK Patterson | Cean Capill | My Precious Bunny","lineup":[{"name":"AK Patterson","time":null,"startMin":null},{"name":"Cean Capill","time":null,"startMin":null},{"name":"My Precious Bunny","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXXG-JSiBhh/","notes":"Partial — same lineup repeats Sat at West Hill Hall. · Friday lineup not on the IG post. Sat (S-WH-BITW) has same artists per meltingvinyl."},{"id":"F-PM-AAE","date":"2026-05-15","day":"Fri","venue":"Pink Moon","event":"Alt Alt Escape","parentEvent":null,"start":"","end":"","lineupRaw":"big long sun","lineup":[{"name":"big long sun","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXzKKz9Dc2o/","notes":"MiOhMi x Strong Island. Partial lineup. · Lineup not on IG post (just poster art credit). 'big long sun' from bandcamp still the only known act."},{"id":"F-FONT","date":"2026-05-15","day":"Fri","venue":"The Font","event":"The Brighton Rock'n'Roll Circus 2026","parentEvent":null,"start":"12:00","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.facebook.com/events/2378550995931275/","notes":"Multi-day Wed 13 – Sat 16 May, 46 acts total. 15+ acts each day. Fri/Sat lineup not yet published."},{"id":"F-FR-EF","date":"2026-05-15","day":"Fri","venue":"Folklore Rooms","event":"Escape To Folklore","parentEvent":null,"start":"20:30","end":"02:00","lineupRaw":"Feat | Flip Top Head | Goodbye | Ashnymph | Kiosk | Porchlight","lineup":[{"name":"Feat","time":null,"startMin":null},{"name":"Flip Top Head","time":null,"startMin":null},{"name":"Goodbye","time":null,"startMin":null},{"name":"Ashnymph","time":null,"startMin":null},{"name":"Kiosk","time":null,"startMin":null},{"name":"Porchlight","time":null,"startMin":null}],"tickets":"Free","link":"https://www.thefolklorerooms.co.uk/listings","notes":"No wristband required."},{"id":"F-MB-PARTY","date":"2026-05-15","day":"Fri","venue":"Mr Bongo HQ","event":"Mr Bongo Street Party","parentEvent":null,"start":"13:00","end":"21:00","lineupRaw":"Rob Sevier | Poly-Ritmo | Rob Luis | Hanson Family | Miche | Mr Bongo DJs","lineup":[{"name":"Rob Sevier","time":null,"startMin":null},{"name":"Poly-Ritmo","time":null,"startMin":null},{"name":"Rob Luis","time":null,"startMin":null},{"name":"Hanson Family","time":null,"startMin":null},{"name":"Miche","time":null,"startMin":null},{"name":"Mr Bongo DJs","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXMuztEjPM4/","notes":"Part of wider Offie Mag Escape. Lineup TBD via IG. · Live broadcast with Offie Radio. Annual tradition."},{"id":"F-BU-GA","date":"2026-05-15","day":"Fri","venue":"Bella Union Shop","event":"The Greatest Ape","parentEvent":null,"start":"","end":"","lineupRaw":"","lineup":[],"tickets":"Free (wristband)","link":"https://www.instagram.com/p/DXjqejWoT5K/","notes":"Multi-night Fri+Sat. Bella Union curated at North Laine shop. Lineup TBD via IG. · IG post is brand teaser. No artists listed."},{"id":"F-GC-FP","date":"2026-05-15","day":"Fri","venue":"Grand Central","event":"Fierce Panda + End of the Trail Brighton Music Showcase","parentEvent":null,"start":"","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXzdyUcgfsy/","notes":"Annual free showcase. Lineup TBD via IG. · IG post is a teaser; no Fri lineup published."},{"id":"F-DAL-SF","date":"2026-05-15","day":"Fri","venue":"Daltons","event":"Acid Box & Abyss Brewing Presents Super Fuzz","parentEvent":null,"start":"23:00","end":"03:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.daltonsbrighton.com/event-details/acid-box-abyss-brewing-presents-super-fuzz-1","notes":"18+, late-night."},{"id":"F-RB-FL","date":"2026-05-15","day":"Fri","venue":"Rossi Bar","event":"Rossi Bar Bash curated by Fat Lloyd","parentEvent":null,"start":"12:00","end":"","lineupRaw":"Fat Lloyd | Kitchen Lover | Bones Ate Arfa | Fever Rouge | Sunbound","lineup":[{"name":"Fat Lloyd","time":null,"startMin":null},{"name":"Kitchen Lover","time":null,"startMin":null},{"name":"Bones Ate Arfa","time":null,"startMin":null},{"name":"Fever Rouge","time":null,"startMin":null},{"name":"Sunbound","time":null,"startMin":null}],"tickets":"Free","link":"https://therossibar.co.uk/events/rossi-bar-bash-curated-by-fat-lloyd/","notes":"18+."},{"id":"F-FM-BLU","date":"2026-05-15","day":"Fri","venue":"Freemasons","event":"The Beluga Escape","parentEvent":null,"start":"","end":"","lineupRaw":"Bighead | Carne | Quaking Aspens | MoonIdle | Spooky Huge | Barramundi | Henry Hockings | La Luna | Osaka Sun | Nil by Habit | Mollywater | Flavours | Girl Apocrypha | Sevastien Beau | Tasska | Bones Ate Arfa | Pav Saloon | Unb4rred","lineup":[{"name":"Bighead","time":null,"startMin":null},{"name":"Carne","time":null,"startMin":null},{"name":"Quaking Aspens","time":null,"startMin":null},{"name":"MoonIdle","time":null,"startMin":null},{"name":"Spooky Huge","time":null,"startMin":null},{"name":"Barramundi","time":null,"startMin":null},{"name":"Henry Hockings","time":null,"startMin":null},{"name":"La Luna","time":null,"startMin":null},{"name":"Osaka Sun","time":null,"startMin":null},{"name":"Nil by Habit","time":null,"startMin":null},{"name":"Mollywater","time":null,"startMin":null},{"name":"Flavours","time":null,"startMin":null},{"name":"Girl Apocrypha","time":null,"startMin":null},{"name":"Sevastien Beau","time":null,"startMin":null},{"name":"Tasska","time":null,"startMin":null},{"name":"Bones Ate Arfa","time":null,"startMin":null},{"name":"Pav Saloon","time":null,"startMin":null},{"name":"Unb4rred","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXpdqDBlyF7/","notes":"Sat+Sun moves to Gladstone. Lineup TBD via IG. · 5-day showcase across 4 venues. More artists TBA."},{"id":"F-SL-PIAS","date":"2026-05-15","day":"Fri","venue":"Secret Location","event":"PIAS free party","parentEvent":null,"start":"","end":"","lineupRaw":"High Vis | Gurriers","lineup":[{"name":"High Vis","time":null,"startMin":null},{"name":"Gurriers","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXq9Y4DCFrC/","notes":"Separate from Tide Beach PIAS show. Lineup TBD via IG. · Secret location revealed after RSVP. Likely Tide Beach Club lineup overflow."},{"id":"F-HR-NFII-0","date":"2026-05-15","day":"Fri","venue":"The Hope & Ruin","event":"Real Farmer","parentEvent":"No Friends in the Industry","start":"14:30","end":"15:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-thursday/","notes":"Presented by Love Thy Neighbour. Hope&Ruin labels by run position so 'Thursday' = Fri 15 May. · IG caption lists 21 bands across Fri-Sat: The Moats, Maximilian, The DSM IV, Jaw Dropped, Frank Lloyd Wleft, Oslo Twins, Ribbon Skirt, Daufodt, Modern Woman, Big Long Sun, Burglar, Morgan Noise, Monks, Glasshouse Redspidermite, Dreamwave, Little Mort, My Precious Bunny, Helen Ganya, Ceann Capaill, Stonks, This Is Tom Forever. Hope.pub Fri-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"F-HR-NFII-1","date":"2026-05-15","day":"Fri","venue":"The Hope & Ruin","event":"Boko Yout","parentEvent":"No Friends in the Industry","start":"15:30","end":"16:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-thursday/","notes":"Presented by Love Thy Neighbour. Hope&Ruin labels by run position so 'Thursday' = Fri 15 May. · IG caption lists 21 bands across Fri-Sat: The Moats, Maximilian, The DSM IV, Jaw Dropped, Frank Lloyd Wleft, Oslo Twins, Ribbon Skirt, Daufodt, Modern Woman, Big Long Sun, Burglar, Morgan Noise, Monks, Glasshouse Redspidermite, Dreamwave, Little Mort, My Precious Bunny, Helen Ganya, Ceann Capaill, Stonks, This Is Tom Forever. Hope.pub Fri-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"F-HR-NFII-2","date":"2026-05-15","day":"Fri","venue":"The Hope & Ruin","event":"Die Twice","parentEvent":"No Friends in the Industry","start":"16:30","end":"17:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-thursday/","notes":"Presented by Love Thy Neighbour. Hope&Ruin labels by run position so 'Thursday' = Fri 15 May. · IG caption lists 21 bands across Fri-Sat: The Moats, Maximilian, The DSM IV, Jaw Dropped, Frank Lloyd Wleft, Oslo Twins, Ribbon Skirt, Daufodt, Modern Woman, Big Long Sun, Burglar, Morgan Noise, Monks, Glasshouse Redspidermite, Dreamwave, Little Mort, My Precious Bunny, Helen Ganya, Ceann Capaill, Stonks, This Is Tom Forever. Hope.pub Fri-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"F-HR-NFII-3","date":"2026-05-15","day":"Fri","venue":"The Hope & Ruin","event":"Search Results","parentEvent":"No Friends in the Industry","start":"17:30","end":"19:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-thursday/","notes":"Presented by Love Thy Neighbour. Hope&Ruin labels by run position so 'Thursday' = Fri 15 May. · IG caption lists 21 bands across Fri-Sat: The Moats, Maximilian, The DSM IV, Jaw Dropped, Frank Lloyd Wleft, Oslo Twins, Ribbon Skirt, Daufodt, Modern Woman, Big Long Sun, Burglar, Morgan Noise, Monks, Glasshouse Redspidermite, Dreamwave, Little Mort, My Precious Bunny, Helen Ganya, Ceann Capaill, Stonks, This Is Tom Forever. Hope.pub Fri-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"F-HR-NFII-4","date":"2026-05-15","day":"Fri","venue":"The Hope & Ruin","event":"Acopia","parentEvent":"No Friends in the Industry","start":"19:30","end":"20:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-thursday/","notes":"Presented by Love Thy Neighbour. Hope&Ruin labels by run position so 'Thursday' = Fri 15 May. · IG caption lists 21 bands across Fri-Sat: The Moats, Maximilian, The DSM IV, Jaw Dropped, Frank Lloyd Wleft, Oslo Twins, Ribbon Skirt, Daufodt, Modern Woman, Big Long Sun, Burglar, Morgan Noise, Monks, Glasshouse Redspidermite, Dreamwave, Little Mort, My Precious Bunny, Helen Ganya, Ceann Capaill, Stonks, This Is Tom Forever. Hope.pub Fri-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"F-HR-NFII-5","date":"2026-05-15","day":"Fri","venue":"The Hope & Ruin","event":"Pleasureinc","parentEvent":"No Friends in the Industry","start":"20:30","end":"21:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-thursday/","notes":"Presented by Love Thy Neighbour. Hope&Ruin labels by run position so 'Thursday' = Fri 15 May. · IG caption lists 21 bands across Fri-Sat: The Moats, Maximilian, The DSM IV, Jaw Dropped, Frank Lloyd Wleft, Oslo Twins, Ribbon Skirt, Daufodt, Modern Woman, Big Long Sun, Burglar, Morgan Noise, Monks, Glasshouse Redspidermite, Dreamwave, Little Mort, My Precious Bunny, Helen Ganya, Ceann Capaill, Stonks, This Is Tom Forever. Hope.pub Fri-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"F-HR-NFII-6","date":"2026-05-15","day":"Fri","venue":"The Hope & Ruin","event":"Meagre Martin","parentEvent":"No Friends in the Industry","start":"21:30","end":"22:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-thursday/","notes":"Presented by Love Thy Neighbour. Hope&Ruin labels by run position so 'Thursday' = Fri 15 May. · IG caption lists 21 bands across Fri-Sat: The Moats, Maximilian, The DSM IV, Jaw Dropped, Frank Lloyd Wleft, Oslo Twins, Ribbon Skirt, Daufodt, Modern Woman, Big Long Sun, Burglar, Morgan Noise, Monks, Glasshouse Redspidermite, Dreamwave, Little Mort, My Precious Bunny, Helen Ganya, Ceann Capaill, Stonks, This Is Tom Forever. Hope.pub Fri-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"F-HR-NFII-7","date":"2026-05-15","day":"Fri","venue":"The Hope & Ruin","event":"Special Guests","parentEvent":"No Friends in the Industry","start":"22:30","end":"23:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-thursday/","notes":"Presented by Love Thy Neighbour. Hope&Ruin labels by run position so 'Thursday' = Fri 15 May. · IG caption lists 21 bands across Fri-Sat: The Moats, Maximilian, The DSM IV, Jaw Dropped, Frank Lloyd Wleft, Oslo Twins, Ribbon Skirt, Daufodt, Modern Woman, Big Long Sun, Burglar, Morgan Noise, Monks, Glasshouse Redspidermite, Dreamwave, Little Mort, My Precious Bunny, Helen Ganya, Ceann Capaill, Stonks, This Is Tom Forever. Hope.pub Fri-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"F-AB-SLACK-0","date":"2026-05-15","day":"Fri","venue":"Alphabet","event":"Kymara","parentEvent":"Slackscape / Alt Escape Friday","start":"20:00","end":"21:00","lineupRaw":"","lineup":[],"tickets":"","link":"https://www.instagram.com/p/DXzXWi-CMgm/","notes":"Includes Paradise Noir Club Night 00:00-02:00. Slack City Radio org. · Paradise Noir Club Night closes 00:00–02:00."},{"id":"F-AB-SLACK-1","date":"2026-05-15","day":"Fri","venue":"Alphabet","event":"Minor Dents","parentEvent":"Slackscape / Alt Escape Friday","start":"21:00","end":"22:00","lineupRaw":"","lineup":[],"tickets":"","link":"https://www.instagram.com/p/DXzXWi-CMgm/","notes":"Includes Paradise Noir Club Night 00:00-02:00. Slack City Radio org. · Paradise Noir Club Night closes 00:00–02:00."},{"id":"F-AB-SLACK-2","date":"2026-05-15","day":"Fri","venue":"Alphabet","event":"Polite Bureaux","parentEvent":"Slackscape / Alt Escape Friday","start":"22:00","end":"23:00","lineupRaw":"","lineup":[],"tickets":"","link":"https://www.instagram.com/p/DXzXWi-CMgm/","notes":"Includes Paradise Noir Club Night 00:00-02:00. Slack City Radio org. · Paradise Noir Club Night closes 00:00–02:00."},{"id":"F-AB-SLACK-3","date":"2026-05-15","day":"Fri","venue":"Alphabet","event":"Formal Speedwear","parentEvent":"Slackscape / Alt Escape Friday","start":"23:00","end":"00:00","lineupRaw":"","lineup":[],"tickets":"","link":"https://www.instagram.com/p/DXzXWi-CMgm/","notes":"Includes Paradise Noir Club Night 00:00-02:00. Slack City Radio org. · Paradise Noir Club Night closes 00:00–02:00."},{"id":"F-AB-SLACK-4","date":"2026-05-15","day":"Fri","venue":"Alphabet","event":"Solid Pleasure","parentEvent":"Slackscape / Alt Escape Friday","start":"00:00","end":"01:00","lineupRaw":"","lineup":[],"tickets":"","link":"https://www.instagram.com/p/DXzXWi-CMgm/","notes":"Includes Paradise Noir Club Night 00:00-02:00. Slack City Radio org. · Paradise Noir Club Night closes 00:00–02:00."},{"id":"F-AB-SLACK-5","date":"2026-05-15","day":"Fri","venue":"Alphabet","event":"Citizenry","parentEvent":"Slackscape / Alt Escape Friday","start":"01:00","end":"02:00","lineupRaw":"","lineup":[],"tickets":"","link":"https://www.instagram.com/p/DXzXWi-CMgm/","notes":"Includes Paradise Noir Club Night 00:00-02:00. Slack City Radio org. · Paradise Noir Club Night closes 00:00–02:00."},{"id":"F-CV-GS","date":"2026-05-15","day":"Fri","venue":"Caravanserai","event":"Going South: A Celebration of South Asian Futurism","parentEvent":null,"start":"18:00","end":"23:00","lineupRaw":"Karma Sheen | The Bhangra All Stars | Jawari | James Pusey | Marc Clayton | Mithila Sarma | Senthuran | Meera Desai | DJ Equal I","lineup":[{"name":"Karma Sheen","time":null,"startMin":null},{"name":"The Bhangra All Stars","time":null,"startMin":null},{"name":"Jawari","time":null,"startMin":null},{"name":"James Pusey","time":null,"startMin":null},{"name":"Marc Clayton","time":null,"startMin":null},{"name":"Mithila Sarma","time":null,"startMin":null},{"name":"Senthuran","time":null,"startMin":null},{"name":"Meera Desai","time":null,"startMin":null},{"name":"DJ Equal I","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXwa70piPot/","notes":"Global Local x Dishoom Permit Room x Bobby Friction. Lineup TBD via IG. · Two rooms: Klub Kaput + Under The Archway. Pay-what-you-want."},{"id":"F-UB-JOY","date":"2026-05-15","day":"Fri","venue":"Unbarred Brewery","event":"Joy RSVP Party","parentEvent":null,"start":"12:00","end":"22:00","lineupRaw":"up-and-coming talent (TBD)","lineup":[{"name":"up-and-coming talent (TBD)","time":null,"startMin":null}],"tickets":"Free (RSVP)","link":"https://www.instagram.com/p/DXzUx4JjJ8T/","notes":"Multi-night Joy RSVP series. 19-23 Elder Pl. Complimentary first beer."},{"id":"F-OAK-BB","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Baby Beserk","parentEvent":null,"start":"19:30","end":"","lineupRaw":"Baby's Berserk","lineup":[{"name":"Baby's Berserk","time":null,"startMin":null}],"tickets":"","link":"https://www.instagram.com/p/DVvXGJwCCzV/","notes":"Amsterdam/Montreal electronic-punk act. · Touring band, on at The Oak as part of Oak Exhibition slate (see F-OAK-EX for full bill)."},{"id":"F-OAK-EX-0","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Naked Brunch","parentEvent":"Oak Exhibition","start":"12:00","end":"13:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-1","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"7036","parentEvent":"Oak Exhibition","start":"13:00","end":"14:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-2","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Oslo Twins","parentEvent":"Oak Exhibition","start":"14:00","end":"15:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-3","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Sunday Mourners","parentEvent":"Oak Exhibition","start":"15:00","end":"17:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-4","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Francis Pig","parentEvent":"Oak Exhibition","start":"17:00","end":"18:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-5","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Ellis-D","parentEvent":"Oak Exhibition","start":"18:15","end":"19:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-6","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Public Circuit","parentEvent":"Oak Exhibition","start":"19:15","end":"20:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-7","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"The Sick Man Of Europe","parentEvent":"Oak Exhibition","start":"20:15","end":"21:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-8","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Baby Berzerk","parentEvent":"Oak Exhibition","start":"21:15","end":"22:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-9","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Annie-Claude Deschenes","parentEvent":"Oak Exhibition","start":"22:15","end":"23:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-10","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Guner Kunier","parentEvent":"Oak Exhibition","start":"23:30","end":"00:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-OAK-EX-11","date":"2026-05-15","day":"Fri","venue":"The Oak","event":"Sibel Anadolu Night Fever","parentEvent":"Oak Exhibition","start":"00:30","end":"00:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Partial. Same artist also on Hope&Ruin Sat lineup. · 34 acts over 3 days. Donation tickets to support venue."},{"id":"F-SY-RM","date":"2026-05-15","day":"Fri","venue":"Shipwrights Yard","event":"Republic of Music","parentEvent":null,"start":"12:00","end":"19:00","lineupRaw":"Pleasure Inc | Lynnies Snow | Tenderness Songs | The Orielles | Eyrellew | The Slow Country Band | Howling Bells | Opus Kink | Grandma House Band","lineup":[{"name":"Pleasure Inc","time":null,"startMin":null},{"name":"Lynnies Snow","time":null,"startMin":null},{"name":"Tenderness Songs","time":null,"startMin":null},{"name":"The Orielles","time":null,"startMin":null},{"name":"Eyrellew","time":null,"startMin":null},{"name":"The Slow Country Band","time":null,"startMin":null},{"name":"Howling Bells","time":null,"startMin":null},{"name":"Opus Kink","time":null,"startMin":null},{"name":"Grandma House Band","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DX9rl1-s1qO/","notes":"Annual Sessions. 2026 lineup TBD via IG."},{"id":"F-HP-GP-0","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"The Band Hamburger","parentEvent":"The Gooreat Peliscape","start":"13:30","end":"14:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-HP-GP-1","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"Trapps","parentEvent":"The Gooreat Peliscape","start":"14:30","end":"15:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-HP-GP-2","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"Ead Wood","parentEvent":"The Gooreat Peliscape","start":"15:30","end":"16:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-HP-GP-3","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"Kate Peaches","parentEvent":"The Gooreat Peliscape","start":"16:30","end":"17:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-HP-GP-4","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"That Band Called Susan","parentEvent":"The Gooreat Peliscape","start":"17:30","end":"18:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-HP-GP-5","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"The Roebucks","parentEvent":"The Gooreat Peliscape","start":"18:30","end":"19:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-HP-GP-6","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"Dreamwave","parentEvent":"The Gooreat Peliscape","start":"19:30","end":"20:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-HP-GP-7","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"The Motor Show","parentEvent":"The Gooreat Peliscape","start":"20:30","end":"21:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-HP-GP-8","date":"2026-05-15","day":"Fri","venue":"Hotel Pelirocco","event":"Not Richard Is Not Richard","parentEvent":"The Gooreat Peliscape","start":"21:30","end":"21:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DX6oL96CkzC/","notes":"Goo Records. Partial."},{"id":"F-FR-FORM-0","date":"2026-05-15","day":"Fri","venue":"Folklore Rooms","event":"Lavender","parentEvent":"FORM Showcase","start":"13:30","end":"14:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://link.dice.fm/Ra17777f4dc8","notes":"1PM–8PM, free entry, limited capacity first come first served."},{"id":"F-FR-FORM-1","date":"2026-05-15","day":"Fri","venue":"Folklore Rooms","event":"World News","parentEvent":"FORM Showcase","start":"14:30","end":"15:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://link.dice.fm/Ra17777f4dc8","notes":"1PM–8PM, free entry, limited capacity first come first served."},{"id":"F-FR-FORM-2","date":"2026-05-15","day":"Fri","venue":"Folklore Rooms","event":"Sarah Meth","parentEvent":"FORM Showcase","start":"15:30","end":"16:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://link.dice.fm/Ra17777f4dc8","notes":"1PM–8PM, free entry, limited capacity first come first served."},{"id":"F-FR-FORM-3","date":"2026-05-15","day":"Fri","venue":"Folklore Rooms","event":"Paper Hats","parentEvent":"FORM Showcase","start":"16:30","end":"17:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://link.dice.fm/Ra17777f4dc8","notes":"1PM–8PM, free entry, limited capacity first come first served."},{"id":"F-FR-FORM-4","date":"2026-05-15","day":"Fri","venue":"Folklore Rooms","event":"Really Good Time","parentEvent":"FORM Showcase","start":"17:30","end":"18:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://link.dice.fm/Ra17777f4dc8","notes":"1PM–8PM, free entry, limited capacity first come first served."},{"id":"F-FR-FORM-5","date":"2026-05-15","day":"Fri","venue":"Folklore Rooms","event":"Lifeloose","parentEvent":"FORM Showcase","start":"18:30","end":"19:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://link.dice.fm/Ra17777f4dc8","notes":"1PM–8PM, free entry, limited capacity first come first served."},{"id":"F-FR-FORM-6","date":"2026-05-15","day":"Fri","venue":"Folklore Rooms","event":"Lifepath '99","parentEvent":"FORM Showcase","start":"19:30","end":"20:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://link.dice.fm/Ra17777f4dc8","notes":"1PM–8PM, free entry, limited capacity first come first served."},{"id":"F-BL-SM","date":"2026-05-15","day":"Fri","venue":"The Black Lion","event":"Smithereen Takeover","parentEvent":null,"start":"12:00","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/smithereenmusicgroup/p/DYCBvwtgEdM/","notes":"3rd edition. Lineup TBD via IG. · Smithereen Takeover runs across Black Lion + Mesmerist + Spotlight Stage Spiegelgardens over Fri+Sat. Full lineup TBA on the day. Free entry."},{"id":"F-MES-SM","date":"2026-05-15","day":"Fri","venue":"The Mesmerist","event":"Smithereen Takeover","parentEvent":null,"start":"12:00","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/smithereenmusicgroup/p/DYCBvwtgEdM/","notes":"Lineup TBD via IG. · Smithereen Takeover. Free."},{"id":"F-SG-SM","date":"2026-05-15","day":"Fri","venue":"Spotlight Stage, Spiegelgardens","event":"Smithereen Takeover","parentEvent":null,"start":"12:00","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/smithereenmusicgroup/p/DYCBvwtgEdM/","notes":"New venue for 2026. Lineup TBD via IG. · Smithereen Takeover. Free."},{"id":"F-FE-LNP","date":"2026-05-15","day":"Fri","venue":"Fiddlers Elbow","event":"Late Night Parrrty","parentEvent":null,"start":"23:30","end":"02:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYCgwgejFkN/","notes":"Joy Concerts programming. Lineup TBD via IG. · Late night, no sign-up / no wristband."},{"id":"F-PIP-EP","date":"2026-05-15","day":"Fri","venue":"The Pipeline","event":"Escape to the Pipeline","parentEvent":null,"start":"14:00","end":"","lineupRaw":"Bone China | Lipworms | Wyatt | Curiosity Shop | Co$ign 333 | Pebbledash | Mleko | Ringlets | + special guests TBA","lineup":[{"name":"Bone China","time":null,"startMin":null},{"name":"Lipworms","time":null,"startMin":null},{"name":"Wyatt","time":null,"startMin":null},{"name":"Curiosity Shop","time":null,"startMin":null},{"name":"Co$ign 333","time":null,"startMin":null},{"name":"Pebbledash","time":null,"startMin":null},{"name":"Mleko","time":null,"startMin":null},{"name":"Ringlets","time":null,"startMin":null},{"name":"+ special guests TBA","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DYEhpHhCHAg/","notes":"Lineup via Songkick venue page; order/times TBD. · Strong Island Recordings collab."},{"id":"F-TBC-PIAS","date":"2026-05-15","day":"Fri","venue":"Tide Beach Club","event":"PIAS Presents","parentEvent":null,"start":"","end":"","lineupRaw":"High Vis | Gurriers | John Grant | The Haunted Youth | Ghinzu | Punchbag | Sassy 009 | Brother Walace | Noonzy | Marsy + surprise DJs","lineup":[{"name":"High Vis","time":null,"startMin":null},{"name":"Gurriers","time":null,"startMin":null},{"name":"John Grant","time":null,"startMin":null},{"name":"The Haunted Youth","time":null,"startMin":null},{"name":"Ghinzu","time":null,"startMin":null},{"name":"Punchbag","time":null,"startMin":null},{"name":"Sassy 009","time":null,"startMin":null},{"name":"Brother Walace","time":null,"startMin":null},{"name":"Noonzy","time":null,"startMin":null},{"name":"Marsy + surprise DJs","time":null,"startMin":null}],"tickets":"Free (RSVP)","link":"https://www.instagram.com/p/DYCjYfJiElT/","notes":"Times TBD. · Full day of PIAS artists."},{"id":"F-BG-ALT-0","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Yoji","parentEvent":"Alt Escape","start":"13:30","end":"14:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-1","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Monique Togara","parentEvent":"Alt Escape","start":"14:30","end":"15:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-2","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Keepvibesnear","parentEvent":"Alt Escape","start":"15:30","end":"16:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-3","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Cordelia Gartside","parentEvent":"Alt Escape","start":"16:30","end":"17:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-4","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Getner","parentEvent":"Alt Escape","start":"17:30","end":"18:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-5","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Big Fear","parentEvent":"Alt Escape","start":"18:30","end":"19:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-6","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Park Drive","parentEvent":"Alt Escape","start":"19:30","end":"20:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-7","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Christian Alexander","parentEvent":"Alt Escape","start":"20:30","end":"21:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-8","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Liang Lawrence","parentEvent":"Alt Escape","start":"21:30","end":"22:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-BG-ALT-9","date":"2026-05-15","day":"Fri","venue":"The Bootlegger","event":"Txn (Tlya x An)","parentEvent":"Alt Escape","start":"22:30","end":"23:00","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — not on BMB/RC lists. Discovered via Clashfinder."},{"id":"F-PAT-H30","date":"2026-05-15","day":"Fri","venue":"Patterns","event":"b:electronic presents Hospital30","parentEvent":null,"start":"23:00","end":"04:00","lineupRaw":"Etherwood | Hoax | SOLAH | Stay-C | Purple Velvet Curtains | Footshooter | Kyla Kilzer | Max Noir | Rhys Baker","lineup":[{"name":"Etherwood","time":null,"startMin":null},{"name":"Hoax","time":null,"startMin":null},{"name":"SOLAH","time":null,"startMin":null},{"name":"Stay-C","time":null,"startMin":null},{"name":"Purple Velvet Curtains","time":null,"startMin":null},{"name":"Footshooter","time":null,"startMin":null},{"name":"Kyla Kilzer","time":null,"startMin":null},{"name":"Max Noir","time":null,"startMin":null},{"name":"Rhys Baker","time":null,"startMin":null}],"tickets":"£14.01","link":"https://dice.fm/event/v3dev7-belectronic-presents-hospital30-15th-may-patterns-brighton-tickets","notes":"30yrs of Hospital Records. Room 2 hosted by Tru Thoughts. Late Escape event."},{"id":"F-BD-PCH","date":"2026-05-15","day":"Fri","venue":"Brighton Dome - Concert Hall","event":"Peaches + BIMINI","parentEvent":null,"start":"","end":"","lineupRaw":"Peaches | BIMINI","lineup":[{"name":"Peaches","time":null,"startMin":null},{"name":"BIMINI","time":null,"startMin":null}],"tickets":"£33","link":"https://brightondome.org/whats-on/","notes":""},{"id":"F-BD-MIT","date":"2026-05-15","day":"Fri","venue":"Brighton Dome","event":"Mithras Trio","parentEvent":null,"start":"","end":"","lineupRaw":"Mithras Trio","lineup":[{"name":"Mithras Trio","time":null,"startMin":null}],"tickets":"From £10","link":"https://brightondome.org/whats-on/","notes":""},{"id":"F-FOW-MB","date":"2026-05-15","day":"Fri","venue":"Fortune of War","event":"Think Twice w/ Mr Bongo","parentEvent":null,"start":"21:00","end":"23:59","lineupRaw":"Mr Bongo","lineup":[{"name":"Mr Bongo","time":null,"startMin":null}],"tickets":"","link":"https://www.fortuneofwar.pub/events-2/2023/4/1/ben-gc-pnse3-3s7ba-9sfpg-j9ax6-tr75p-csgmh-l9hb8-dpdxx-6kt6f-2x44m-wn2cj-7n76a-6smfj-9fmcx-ld9y5-ha72n-lbmw7-3h559-hg9ad-4paw4","notes":""},{"id":"F-C2-DC","date":"2026-05-15","day":"Fri","venue":"Concorde 2","event":"City Wall X Dave Clarke","parentEvent":null,"start":"23:00","end":"","lineupRaw":"Dave Clarke","lineup":[{"name":"Dave Clarke","time":null,"startMin":null}],"tickets":"","link":"https://www.concorde2.co.uk/event/city-wall-x-dave-clarke","notes":"18+."},{"id":"F-BR-FF","date":"2026-05-15","day":"Fri","venue":"The Brunswick","event":"Filthy Fridays with Paul Foot and Special Guests","parentEvent":null,"start":"19:30","end":"","lineupRaw":"Paul Foot | Martha Casey | Michael Campuzano","lineup":[{"name":"Paul Foot","time":null,"startMin":null},{"name":"Martha Casey","time":null,"startMin":null},{"name":"Michael Campuzano","time":null,"startMin":null}],"tickets":"£12","link":"https://www.brunswickpub.co.uk/event-details/filthy-fridays-with-paul-foot-and-special-guests","notes":"18+. Comedy."},{"id":"F-BR-SN","date":"2026-05-15","day":"Fri","venue":"The Brunswick","event":"Siri Neel + Lewis Monticelli + Mazaruni Khan","parentEvent":null,"start":"19:00","end":"","lineupRaw":"Siri Neel | Lewis Monticelli | Mazaruni Khan","lineup":[{"name":"Siri Neel","time":null,"startMin":null},{"name":"Lewis Monticelli","time":null,"startMin":null},{"name":"Mazaruni Khan","time":null,"startMin":null}],"tickets":"£5","link":"https://www.brunswickpub.co.uk/event-details/siri-neel-lewis-monticelli-mazaruni-khan","notes":"18+."},{"id":"F-VLK-SP","date":"2026-05-15","day":"Fri","venue":"Volks Club","event":"Snakepit w/ Killbox & Enta + Valkyrie","parentEvent":null,"start":"23:30","end":"07:00","lineupRaw":"Killbox (Ed Rush & Audio) | Enta | Valkyrie | Thelena | Tangents | Eclipse | Kerizma (host) | Mynx (host) | The Midnight Massacre (Room 2)","lineup":[{"name":"Killbox (Ed Rush & Audio)","time":null,"startMin":null},{"name":"Enta","time":null,"startMin":null},{"name":"Valkyrie","time":null,"startMin":null},{"name":"Thelena","time":null,"startMin":null},{"name":"Tangents","time":null,"startMin":null},{"name":"Eclipse","time":null,"startMin":null},{"name":"Kerizma (host)","time":null,"startMin":null},{"name":"Mynx (host)","time":null,"startMin":null},{"name":"The Midnight Massacre (Room 2)","time":null,"startMin":null}],"tickets":"From £6","link":"https://www.axs.com/uk/events/1397364","notes":"30yrs Volks/Snakepit. Killbox returns after 5-yr hiatus. 18+."},{"id":"S-RB-AC","date":"2026-05-16","day":"Sat","venue":"Rossi Bar","event":"Agenda Collective","parentEvent":null,"start":"12:00","end":"17:00","lineupRaw":"Batmilk | Frances Mistry | Carva | Grim Rite | Ahnolog | Shineymoon | Medium Sized Dog","lineup":[{"name":"Batmilk","time":null,"startMin":null},{"name":"Frances Mistry","time":null,"startMin":null},{"name":"Carva","time":null,"startMin":null},{"name":"Grim Rite","time":null,"startMin":null},{"name":"Ahnolog","time":null,"startMin":null},{"name":"Shineymoon","time":null,"startMin":null},{"name":"Medium Sized Dog","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXhQzeeAm5p/","notes":"Female-fronted folk/indie/shoegaze/rock. Proceeds to Women for Women Brighton UK. Artist names TBD via IG. · \"Ditch the delegates\" party. Female-fronted lineup."},{"id":"S-PE-GE","date":"2026-05-16","day":"Sat","venue":"Presuming Eds","event":"Gnarly Escape","parentEvent":null,"start":"","end":"","lineupRaw":"Luke Dimambro | Bones Ate Arfa | Atticomatic | Speedial Band | Shtepi Music | Hot Face | Ryan Poulter | Moon Idle | Kitchen Lover Band | Martial Arts Band | Shaking Hand | Had Sandy Bandy","lineup":[{"name":"Luke Dimambro","time":null,"startMin":null},{"name":"Bones Ate Arfa","time":null,"startMin":null},{"name":"Atticomatic","time":null,"startMin":null},{"name":"Speedial Band","time":null,"startMin":null},{"name":"Shtepi Music","time":null,"startMin":null},{"name":"Hot Face","time":null,"startMin":null},{"name":"Ryan Poulter","time":null,"startMin":null},{"name":"Moon Idle","time":null,"startMin":null},{"name":"Kitchen Lover Band","time":null,"startMin":null},{"name":"Martial Arts Band","time":null,"startMin":null},{"name":"Shaking Hand","time":null,"startMin":null},{"name":"Had Sandy Bandy","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXj4cI0jYKE/","notes":"Lineup TBD via IG. · Some secret bonus bands TBA"},{"id":"S-WH-BITW","date":"2026-05-16","day":"Sat","venue":"West Hill Hall","event":"Back in the Woods","parentEvent":null,"start":"","end":"","lineupRaw":"AK Patterson | Cean Capill | My Precious Bunny","lineup":[{"name":"AK Patterson","time":null,"startMin":null},{"name":"Cean Capill","time":null,"startMin":null},{"name":"My Precious Bunny","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXe1VeFiNwo/","notes":"Same artists as Fri Fishing Museum show. · Sat lineup not on the IG post. Already have 3 acts via meltingvinyl."},{"id":"S-FONT","date":"2026-05-16","day":"Sat","venue":"The Font","event":"The Brighton Rock'n'Roll Circus 2026","parentEvent":null,"start":"12:00","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.facebook.com/events/2378550995931275/","notes":"15+ acts. Full Sat lineup not yet published."},{"id":"S-HP-GP-0","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"Mind Frog","parentEvent":"The Great Peliscape","start":"14:45","end":"15:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-1","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"Tinsel","parentEvent":"The Great Peliscape","start":"15:30","end":"16:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-2","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"Joy Machines","parentEvent":"The Great Peliscape","start":"16:15","end":"17:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-3","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"Beauty Princess","parentEvent":"The Great Peliscape","start":"17:00","end":"17:45","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-4","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"The Phone Call","parentEvent":"The Great Peliscape","start":"17:45","end":"18:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-5","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"Murphy's Medicine","parentEvent":"The Great Peliscape","start":"18:30","end":"19:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-6","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"Me=U","parentEvent":"The Great Peliscape","start":"19:15","end":"20:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-7","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"En Heat","parentEvent":"The Great Peliscape","start":"20:00","end":"20:45","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-8","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"Seadog","parentEvent":"The Great Peliscape","start":"20:45","end":"21:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-HP-GP-9","date":"2026-05-16","day":"Sat","venue":"Hotel Pelirocco","event":"Drowse Plaza","parentEvent":"The Great Peliscape","start":"21:30","end":"22:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXJ159pDFrL/","notes":"Filthy Pedro presents. · Antifolk lineup (10 acts with set times) likely more complete. IG caption added: 'Love All Me' (= Me=U?)."},{"id":"S-BU-GA","date":"2026-05-16","day":"Sat","venue":"Bella Union Shop","event":"The Greatest Ape","parentEvent":null,"start":"","end":"","lineupRaw":"","lineup":[],"tickets":"Free (wristband)","link":"https://www.instagram.com/p/DXjqejWoT5K/","notes":"Lineup TBD via IG. · IG post is brand teaser. No artists listed."},{"id":"S-PIP-FCK","date":"2026-05-16","day":"Sat","venue":"The Pipeline","event":"F*CK THE GRATE ESCAPE","parentEvent":null,"start":"","end":"","lineupRaw":"Fast Trains | Enjoyable Listens | Little Wasters | the kowloons | Lovepet Horror | luvd (UK)","lineup":[{"name":"Fast Trains","time":null,"startMin":null},{"name":"Enjoyable Listens","time":null,"startMin":null},{"name":"Little Wasters","time":null,"startMin":null},{"name":"the kowloons","time":null,"startMin":null},{"name":"Lovepet Horror","time":null,"startMin":null},{"name":"luvd (UK)","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXrpj2cCMrJ/","notes":"IG caption had no artists; keeping Songkick's 6-act list."},{"id":"S-GL-BLU","date":"2026-05-16","day":"Sat","venue":"Gladstone","event":"The Beluga Escape","parentEvent":null,"start":"","end":"","lineupRaw":"Bighead | Carne | Quaking Aspens | MoonIdle | Spooky Huge | Barramundi | Henry Hockings | La Luna | Osaka Sun | Nil by Habit | Mollywater | Flavours | Girl Apocrypha | Sevastien Beau | Tasska | Bones Ate Arfa | Pav Saloon | Unb4rred","lineup":[{"name":"Bighead","time":null,"startMin":null},{"name":"Carne","time":null,"startMin":null},{"name":"Quaking Aspens","time":null,"startMin":null},{"name":"MoonIdle","time":null,"startMin":null},{"name":"Spooky Huge","time":null,"startMin":null},{"name":"Barramundi","time":null,"startMin":null},{"name":"Henry Hockings","time":null,"startMin":null},{"name":"La Luna","time":null,"startMin":null},{"name":"Osaka Sun","time":null,"startMin":null},{"name":"Nil by Habit","time":null,"startMin":null},{"name":"Mollywater","time":null,"startMin":null},{"name":"Flavours","time":null,"startMin":null},{"name":"Girl Apocrypha","time":null,"startMin":null},{"name":"Sevastien Beau","time":null,"startMin":null},{"name":"Tasska","time":null,"startMin":null},{"name":"Bones Ate Arfa","time":null,"startMin":null},{"name":"Pav Saloon","time":null,"startMin":null},{"name":"Unb4rred","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXpdqDBlyF7/","notes":"Lineup TBD via IG. · 5-day showcase across 4 venues."},{"id":"S-PM-OR","date":"2026-05-16","day":"Sat","venue":"Pink Moon","event":"Offie Radio @ Pink Moon","parentEvent":null,"start":"12:00","end":"20:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXuCkvQCC1Y/","notes":"52 Ship Street BN1 1AF. Lineup TBD via IG. · Multi-format day: pints & pizza, broadcast party, garden hang, evening ticketed clubnight at Alphabet (S-AB-OFFIE)."},{"id":"S-AB-OFFIE","date":"2026-05-16","day":"Sat","venue":"Alphabet","event":"The Offie Mag Social","parentEvent":null,"start":"22:30","end":"02:00","lineupRaw":"Offie Mag DJs | friends & special guests","lineup":[{"name":"Offie Mag DJs","time":null,"startMin":null},{"name":"friends & special guests","time":null,"startMin":null}],"tickets":"£11","link":"https://www.alphabetbrighton.com/listings/may-16-offie-mag-social","notes":"18+."},{"id":"S-HR-NFII-0","date":"2026-05-16","day":"Sat","venue":"The Hope & Ruin","event":"The Sick Man Of Europe","parentEvent":"No Friends in the Industry","start":"14:30","end":"15:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-friday/","notes":"Presented by Love Thy Neighbour. · IG caption lists 21 bands across Fri-Sat. Hope.pub Sat-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"S-HR-NFII-1","date":"2026-05-16","day":"Sat","venue":"The Hope & Ruin","event":"The Cindys","parentEvent":"No Friends in the Industry","start":"15:30","end":"16:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-friday/","notes":"Presented by Love Thy Neighbour. · IG caption lists 21 bands across Fri-Sat. Hope.pub Sat-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"S-HR-NFII-2","date":"2026-05-16","day":"Sat","venue":"The Hope & Ruin","event":"Blood Wizard","parentEvent":"No Friends in the Industry","start":"16:30","end":"17:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-friday/","notes":"Presented by Love Thy Neighbour. · IG caption lists 21 bands across Fri-Sat. Hope.pub Sat-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"S-HR-NFII-3","date":"2026-05-16","day":"Sat","venue":"The Hope & Ruin","event":"Bazuco","parentEvent":"No Friends in the Industry","start":"17:30","end":"19:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-friday/","notes":"Presented by Love Thy Neighbour. · IG caption lists 21 bands across Fri-Sat. Hope.pub Sat-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"S-HR-NFII-4","date":"2026-05-16","day":"Sat","venue":"The Hope & Ruin","event":"Pynch","parentEvent":"No Friends in the Industry","start":"19:30","end":"20:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-friday/","notes":"Presented by Love Thy Neighbour. · IG caption lists 21 bands across Fri-Sat. Hope.pub Sat-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"S-HR-NFII-5","date":"2026-05-16","day":"Sat","venue":"The Hope & Ruin","event":"Scott Hepple & The Sun Ban","parentEvent":"No Friends in the Industry","start":"20:30","end":"21:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-friday/","notes":"Presented by Love Thy Neighbour. · IG caption lists 21 bands across Fri-Sat. Hope.pub Sat-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"S-HR-NFII-6","date":"2026-05-16","day":"Sat","venue":"The Hope & Ruin","event":"Makeshift Art Bar","parentEvent":"No Friends in the Industry","start":"21:30","end":"22:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-friday/","notes":"Presented by Love Thy Neighbour. · IG caption lists 21 bands across Fri-Sat. Hope.pub Sat-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"S-HR-NFII-7","date":"2026-05-16","day":"Sat","venue":"The Hope & Ruin","event":"The Klittens","parentEvent":"No Friends in the Industry","start":"22:30","end":"23:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.hope.pub/event/no-friends-in-the-industry-friday/","notes":"Presented by Love Thy Neighbour. · IG caption lists 21 bands across Fri-Sat. Hope.pub Sat-specific lineup (with times) is more authoritative — see Lineup column."},{"id":"S-RH-FAKE","date":"2026-05-16","day":"Sat","venue":"The Rose Hill","event":"Fake Escape 2026","parentEvent":null,"start":"15:00","end":"00:00","lineupRaw":"BUNTY | Religious Figures | Borges Machado | Lena | Athina B | Grin | MAFU | Fault Thrower | Banks | Evadney | Shit Creek | Page 2 | Em-Dash | The Polly Shang Kuan Band | Hand of Glory | + DJs: Dawney, Dee Love","lineup":[{"name":"BUNTY","time":null,"startMin":null},{"name":"Religious Figures","time":null,"startMin":null},{"name":"Borges Machado","time":null,"startMin":null},{"name":"Lena","time":null,"startMin":null},{"name":"Athina B","time":null,"startMin":null},{"name":"Grin","time":null,"startMin":null},{"name":"MAFU","time":null,"startMin":null},{"name":"Fault Thrower","time":null,"startMin":null},{"name":"Banks","time":null,"startMin":null},{"name":"Evadney","time":null,"startMin":null},{"name":"Shit Creek","time":null,"startMin":null},{"name":"Page 2","time":null,"startMin":null},{"name":"Em-Dash","time":null,"startMin":null},{"name":"The Polly Shang Kuan Band","time":null,"startMin":null},{"name":"Hand of Glory","time":null,"startMin":null},{"name":"+ DJs: Dawney, Dee Love","time":null,"startMin":null}],"tickets":"£10 / £5 concession / PWYC","link":"https://therosehill.co.uk/event/fake-escape-2026/","notes":"Full day. Vinyl DJs + saxophone performer."},{"id":"S-AB-JOY","date":"2026-05-16","day":"Sat","venue":"Alphabet","event":"JOY RSVP Party","parentEvent":null,"start":"","end":"","lineupRaw":"","lineup":[],"tickets":"Free (RSVP)","link":"https://www.alphabetbrighton.com/listings/1315-may-joy-rsvp-party","notes":"15:00 session. 18+."},{"id":"S-FR-AAE","date":"2026-05-16","day":"Sat","venue":"Folklore Rooms","event":"Alt Alt Escape (Lexi Berg + EOTR)","parentEvent":null,"start":"21:00","end":"01:30","lineupRaw":"Slow Leaves | Steinza | Josephine Illingworth | Sarah Crean | Salarymen | Mother Soki | Nierra Creek | Kamran Khan | Lindow Man","lineup":[{"name":"Slow Leaves","time":null,"startMin":null},{"name":"Steinza","time":null,"startMin":null},{"name":"Josephine Illingworth","time":null,"startMin":null},{"name":"Sarah Crean","time":null,"startMin":null},{"name":"Salarymen","time":null,"startMin":null},{"name":"Mother Soki","time":null,"startMin":null},{"name":"Nierra Creek","time":null,"startMin":null},{"name":"Kamran Khan","time":null,"startMin":null},{"name":"Lindow Man","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DX6TQFajNF7/","notes":"No wristband required. · No wristband. (IG caption matches venue-listing exactly.)"},{"id":"S-FR-FST","date":"2026-05-16","day":"Sat","venue":"Folklore Rooms","event":"Folklore Sessions Takeover","parentEvent":null,"start":"13:30","end":"21:00","lineupRaw":"Slow Leaves | Steinza | Josephine Illingworth | Sarah Crean | Salarymen | Mother Soki | Nierra Creek | Kamran Khan | Lindow Man","lineup":[{"name":"Slow Leaves","time":null,"startMin":null},{"name":"Steinza","time":null,"startMin":null},{"name":"Josephine Illingworth","time":null,"startMin":null},{"name":"Sarah Crean","time":null,"startMin":null},{"name":"Salarymen","time":null,"startMin":null},{"name":"Mother Soki","time":null,"startMin":null},{"name":"Nierra Creek","time":null,"startMin":null},{"name":"Kamran Khan","time":null,"startMin":null},{"name":"Lindow Man","time":null,"startMin":null}],"tickets":"Free","link":"https://www.thefolklorerooms.co.uk/listings","notes":""},{"id":"S-DW-SF","date":"2026-05-16","day":"Sat","venue":"Dead Wax Social","event":"Sugar Free x Penance Music Group","parentEvent":null,"start":"","end":"","lineupRaw":"Good Job Kid | Bones Ate Arfa | Labyrinthine Oceans | Hangman","lineup":[{"name":"Good Job Kid","time":null,"startMin":null},{"name":"Bones Ate Arfa","time":null,"startMin":null},{"name":"Labyrinthine Oceans","time":null,"startMin":null},{"name":"Hangman","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DX_tR3ojT4k/","notes":"Lineup TBD via IG. · Sugar-Free Records x Penance Music Group collab."},{"id":"S-OAK-GO-0","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"Gravegonzo","parentEvent":"The Good Oakscape","start":"12:00","end":"13:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-1","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"LLSN","parentEvent":"The Good Oakscape","start":"13:00","end":"14:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-2","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"Minor Dents","parentEvent":"The Good Oakscape","start":"14:00","end":"15:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-3","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"Snowy Mountain","parentEvent":"The Good Oakscape","start":"15:00","end":"16:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-4","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"Quaking Aspens","parentEvent":"The Good Oakscape","start":"16:00","end":"18:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-5","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"The Roves","parentEvent":"The Good Oakscape","start":"18:00","end":"19:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-6","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"School Disco","parentEvent":"The Good Oakscape","start":"19:00","end":"20:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-7","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"The Stanford Family Band","parentEvent":"The Good Oakscape","start":"20:00","end":"21:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-8","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"Hutch","parentEvent":"The Good Oakscape","start":"21:15","end":"22:15","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-9","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"My Precious Bunny","parentEvent":"The Good Oakscape","start":"22:15","end":"23:45","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-OAK-GO-10","date":"2026-05-16","day":"Sat","venue":"The Oak","event":"Pebbledash","parentEvent":"The Good Oakscape","start":"23:45","end":"00:30","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYATvxtCEfy/","notes":"Lineup TBD via IG. · 34 acts over 3 days."},{"id":"S-FE-LNP","date":"2026-05-16","day":"Sat","venue":"Fiddlers Elbow","event":"Late Night Parrrty","parentEvent":null,"start":"00:30","end":"02:30","lineupRaw":"Maquina (Portugal)","lineup":[{"name":"Maquina (Portugal)","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DYCgwgejFkN/","notes":"Partial. · Late night, no sign-up / no wristband."},{"id":"S-BL-SM","date":"2026-05-16","day":"Sat","venue":"The Black Lion","event":"Smithereen Takeover","parentEvent":null,"start":"12:00","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/smithereenmusicgroup/p/DYCBvwtgEdM/","notes":"Lineup TBD via IG. · Smithereen Takeover."},{"id":"S-MES-SM","date":"2026-05-16","day":"Sat","venue":"The Mesmerist","event":"Smithereen Takeover","parentEvent":null,"start":"12:00","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/smithereenmusicgroup/p/DYCBvwtgEdM/","notes":"Lineup TBD via IG. · Smithereen Takeover."},{"id":"S-ACT-SL","date":"2026-05-16","day":"Sat","venue":"The Actors","event":"Slacktors","parentEvent":null,"start":"","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYCuFSVijrw/","notes":"2025 had 12 bands on 2 stages, live on Slack City Radio. 2026 lineup TBD via IG. · IG post: late-night slot from 02:30; no artists named on post."},{"id":"S-NTB-SHV-0","date":"2026-05-16","day":"Sat","venue":"Brighton Bandstand","event":"Scared Little Toaster","parentEvent":"The Shovel Presents An Insignificant Invasion","start":"13:00","end":"14:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXgc5gtiEHb/","notes":"IG caption confirms 8 acts: Gegenpress, paper hats, jawharp, Rampressure, SOFT, Skunkworm, Scared Little Toaster, MR. NO — see Clashfinder-sourced set times in Lineup column."},{"id":"S-NTB-SHV-1","date":"2026-05-16","day":"Sat","venue":"Brighton Bandstand","event":"MR. NO Secret Set","parentEvent":"The Shovel Presents An Insignificant Invasion","start":"14:00","end":"15:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXgc5gtiEHb/","notes":"IG caption confirms 8 acts: Gegenpress, paper hats, jawharp, Rampressure, SOFT, Skunkworm, Scared Little Toaster, MR. NO — see Clashfinder-sourced set times in Lineup column."},{"id":"S-NTB-SHV-2","date":"2026-05-16","day":"Sat","venue":"Brighton Bandstand","event":"Skunkworm","parentEvent":"The Shovel Presents An Insignificant Invasion","start":"15:00","end":"16:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXgc5gtiEHb/","notes":"IG caption confirms 8 acts: Gegenpress, paper hats, jawharp, Rampressure, SOFT, Skunkworm, Scared Little Toaster, MR. NO — see Clashfinder-sourced set times in Lineup column."},{"id":"S-NTB-SHV-3","date":"2026-05-16","day":"Sat","venue":"Brighton Bandstand","event":"SOFT","parentEvent":"The Shovel Presents An Insignificant Invasion","start":"16:00","end":"17:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXgc5gtiEHb/","notes":"IG caption confirms 8 acts: Gegenpress, paper hats, jawharp, Rampressure, SOFT, Skunkworm, Scared Little Toaster, MR. NO — see Clashfinder-sourced set times in Lineup column."},{"id":"S-NTB-SHV-4","date":"2026-05-16","day":"Sat","venue":"Brighton Bandstand","event":"Rampressure","parentEvent":"The Shovel Presents An Insignificant Invasion","start":"17:00","end":"18:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXgc5gtiEHb/","notes":"IG caption confirms 8 acts: Gegenpress, paper hats, jawharp, Rampressure, SOFT, Skunkworm, Scared Little Toaster, MR. NO — see Clashfinder-sourced set times in Lineup column."},{"id":"S-NTB-SHV-5","date":"2026-05-16","day":"Sat","venue":"Brighton Bandstand","event":"paper hats","parentEvent":"The Shovel Presents An Insignificant Invasion","start":"18:00","end":"19:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXgc5gtiEHb/","notes":"IG caption confirms 8 acts: Gegenpress, paper hats, jawharp, Rampressure, SOFT, Skunkworm, Scared Little Toaster, MR. NO — see Clashfinder-sourced set times in Lineup column."},{"id":"S-NTB-SHV-6","date":"2026-05-16","day":"Sat","venue":"Brighton Bandstand","event":"jawharp","parentEvent":"The Shovel Presents An Insignificant Invasion","start":"19:00","end":"20:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXgc5gtiEHb/","notes":"IG caption confirms 8 acts: Gegenpress, paper hats, jawharp, Rampressure, SOFT, Skunkworm, Scared Little Toaster, MR. NO — see Clashfinder-sourced set times in Lineup column."},{"id":"S-NTB-SHV-7","date":"2026-05-16","day":"Sat","venue":"Brighton Bandstand","event":"gegenpress","parentEvent":"The Shovel Presents An Insignificant Invasion","start":"20:00","end":"20:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DXgc5gtiEHb/","notes":"IG caption confirms 8 acts: Gegenpress, paper hats, jawharp, Rampressure, SOFT, Skunkworm, Scared Little Toaster, MR. NO — see Clashfinder-sourced set times in Lineup column."},{"id":"S-RB-SQ-0","date":"2026-05-16","day":"Sat","venue":"Rossi Bar","event":"MLEKO","parentEvent":"SQ Escape","start":"18:00","end":"19:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYFiKV8DEG-/","notes":"Likely evening (Agenda Collective takes daytime). Lineup TBD via IG. · 18+ (bring ID). Bring dancing shoes."},{"id":"S-RB-SQ-1","date":"2026-05-16","day":"Sat","venue":"Rossi Bar","event":"Veronica Music","parentEvent":"SQ Escape","start":"19:00","end":"20:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYFiKV8DEG-/","notes":"Likely evening (Agenda Collective takes daytime). Lineup TBD via IG. · 18+ (bring ID). Bring dancing shoes."},{"id":"S-RB-SQ-2","date":"2026-05-16","day":"Sat","venue":"Rossi Bar","event":"Pebbledash","parentEvent":"SQ Escape","start":"20:00","end":"21:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYFiKV8DEG-/","notes":"Likely evening (Agenda Collective takes daytime). Lineup TBD via IG. · 18+ (bring ID). Bring dancing shoes."},{"id":"S-RB-SQ-3","date":"2026-05-16","day":"Sat","venue":"Rossi Bar","event":"Fire Esc","parentEvent":"SQ Escape","start":"21:00","end":"22:00","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYFiKV8DEG-/","notes":"Likely evening (Agenda Collective takes daytime). Lineup TBD via IG. · 18+ (bring ID). Bring dancing shoes."},{"id":"S-RB-SQ-4","date":"2026-05-16","day":"Sat","venue":"Rossi Bar","event":"Bones Ate Arfa","parentEvent":"SQ Escape","start":"22:00","end":"","lineupRaw":"","lineup":[],"tickets":"Free","link":"https://www.instagram.com/p/DYFiKV8DEG-/","notes":"Likely evening (Agenda Collective takes daytime). Lineup TBD via IG. · 18+ (bring ID). Bring dancing shoes."},{"id":"S-BG-ALT-0","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Dilated.Inc","parentEvent":"Alt Escape","start":"13:30","end":"14:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-1","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Ifeofkwasi","parentEvent":"Alt Escape","start":"14:30","end":"15:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-2","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Power Plush","parentEvent":"Alt Escape","start":"15:30","end":"16:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-3","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Matilda Pratt","parentEvent":"Alt Escape","start":"16:30","end":"17:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-4","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Adult Cat","parentEvent":"Alt Escape","start":"17:30","end":"18:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-5","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Sarah Crean","parentEvent":"Alt Escape","start":"18:30","end":"19:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-6","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Pouch","parentEvent":"Alt Escape","start":"19:30","end":"20:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-7","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Common Goldfish","parentEvent":"Alt Escape","start":"20:30","end":"21:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-8","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Canned Pineapple","parentEvent":"Alt Escape","start":"21:30","end":"22:30","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-BG-ALT-9","date":"2026-05-16","day":"Sat","venue":"The Bootlegger","event":"Bennie Jetz","parentEvent":"Alt Escape","start":"22:30","end":"23:00","lineupRaw":"","lineup":[],"tickets":"","link":"https://clashfinder.com/l/tge26/","notes":"NEW — discovered via Clashfinder."},{"id":"S-DAL-PSY","date":"2026-05-16","day":"Sat","venue":"Daltons","event":"Psych Escape","parentEvent":null,"start":"19:00","end":"03:00","lineupRaw":"Helicon","lineup":[{"name":"Helicon","time":null,"startMin":null}],"tickets":"Free (RSVP)","link":"https://www.daltonsbrighton.com/event-details/psych-escape","notes":"18+. Multi-night Sat-Sun."},{"id":"S-C2-PSQ","date":"2026-05-16","day":"Sat","venue":"Concorde 2","event":"Peep Show Quiz","parentEvent":null,"start":"18:00","end":"","lineupRaw":"Paul Clayton","lineup":[{"name":"Paul Clayton","time":null,"startMin":null}],"tickets":"","link":"https://www.concorde2.co.uk/event/peep-show-quiz","notes":"Quiz, not gig. 14+, under-16s with adult."},{"id":"S-BD-AK","date":"2026-05-16","day":"Sat","venue":"Brighton Dome","event":"Angélique Kidjo","parentEvent":null,"start":"","end":"","lineupRaw":"Angélique Kidjo","lineup":[{"name":"Angélique Kidjo","time":null,"startMin":null}],"tickets":"","link":"https://brightondome.org/whats-on/","notes":""},{"id":"S-FOW-PB","date":"2026-05-16","day":"Sat","venue":"Fortune of War","event":"DJs El Melting Pot & SelvaSistema","parentEvent":null,"start":"20:00","end":"23:59","lineupRaw":"El Melting Pot | SelvaSistema | + guests","lineup":[{"name":"El Melting Pot","time":null,"startMin":null},{"name":"SelvaSistema","time":null,"startMin":null},{"name":"+ guests","time":null,"startMin":null}],"tickets":"","link":"https://www.fortuneofwar.pub/events-2/2023/3/31/pollito-boogaloo-live-cumbia-band-amp-dj-8l9jc-ye7pd-pean6-tk3tj-8h7tt-zfj7b-p369g-hg3sg-fxp53-47a7x","notes":"Original Pollito Boogaloo cancelled — DJ set only."},{"id":"S-CoB-JC","date":"2026-05-16","day":"Sat","venue":"Caroline of Brunswick","event":"John Callaghan's Cabaret Electro","parentEvent":null,"start":"19:00","end":"","lineupRaw":"John Callaghan","lineup":[{"name":"John Callaghan","time":null,"startMin":null}],"tickets":"£11","link":"https://carolineofbrunswick.co.uk/events/595-907-626-223-706-942-262-482-329-568-307-107-113-774-961-268-525-608-791-160-860-980-401-735-944-197-163-388-410-158-966-725-251-836-257-976-596-999-422-221-777-777-799-628-623-678-888-818-673-3-20/","notes":"Upper Lounge. 60-min cabaret + live electronics + theatre."},{"id":"S-PAT-SD","date":"2026-05-16","day":"Sat","venue":"Patterns","event":"Semi Delicious: Demi Riquísimo","parentEvent":null,"start":"23:00","end":"","lineupRaw":"Demi Riquísimo | Milly On Air","lineup":[{"name":"Demi Riquísimo","time":null,"startMin":null},{"name":"Milly On Air","time":null,"startMin":null}],"tickets":"£9.69","link":"https://dice.fm/event/xedbqm-semi-delicious-demi-riqusimo-16th-may-patterns-brighton-tickets","notes":"Late Escape x Semi Delicious. 18+. May have unannounced support."},{"id":"S-QT-UJ","date":"2026-05-16","day":"Sat","venue":"Quarters","event":"Uncut Jams presents Sally C b2b Dan Shake","parentEvent":null,"start":"23:00","end":"03:00","lineupRaw":"Sally C | Dan Shake","lineup":[{"name":"Sally C","time":null,"startMin":null},{"name":"Dan Shake","time":null,"startMin":null}],"tickets":"","link":"https://quartersbrighton.co.uk/whatson/uncut-jams-presents-sally-c-b2b-dan-shake","notes":"18+."},{"id":"S-BR-LT","date":"2026-05-16","day":"Sat","venue":"The Brunswick","event":"Lightning Threads","parentEvent":null,"start":"20:00","end":"","lineupRaw":"Lightning Threads","lineup":[{"name":"Lightning Threads","time":null,"startMin":null}],"tickets":"£12","link":"https://www.brunswickpub.co.uk/event-details/lightning-threads","notes":"18+. Blues-rock trio."},{"id":"S-VLK-EX","date":"2026-05-16","day":"Sat","venue":"Volks Club","event":"Exit Records — dBridge & SP:MC, Fixate, Itoa","parentEvent":null,"start":"23:00","end":"07:00","lineupRaw":"dBridge & SP:MC | Fixate | Itoa | Jungalice b2b Vergano | Flakes | Mynx | Range | Opensource (Room 2)","lineup":[{"name":"dBridge & SP:MC","time":null,"startMin":null},{"name":"Fixate","time":null,"startMin":null},{"name":"Itoa","time":null,"startMin":null},{"name":"Jungalice b2b Vergano","time":null,"startMin":null},{"name":"Flakes","time":null,"startMin":null},{"name":"Mynx","time":null,"startMin":null},{"name":"Range","time":null,"startMin":null},{"name":"Opensource (Room 2)","time":null,"startMin":null}],"tickets":"From £8","link":"https://www.axs.com/uk/events/1427354","notes":"Exit Records showcase. 18+. Part of 30yrs Volks."},{"id":"U-GL-BLU","date":"2026-05-17","day":"Sun","venue":"Gladstone","event":"The Beluga Escape","parentEvent":null,"start":"","end":"","lineupRaw":"Bighead | Carne | Quaking Aspens | MoonIdle | Spooky Huge | Barramundi | Henry Hockings | La Luna | Osaka Sun | Nil by Habit | Mollywater | Flavours | Girl Apocrypha | Sevastien Beau | Tasska | Bones Ate Arfa | Pav Saloon | Unb4rred","lineup":[{"name":"Bighead","time":null,"startMin":null},{"name":"Carne","time":null,"startMin":null},{"name":"Quaking Aspens","time":null,"startMin":null},{"name":"MoonIdle","time":null,"startMin":null},{"name":"Spooky Huge","time":null,"startMin":null},{"name":"Barramundi","time":null,"startMin":null},{"name":"Henry Hockings","time":null,"startMin":null},{"name":"La Luna","time":null,"startMin":null},{"name":"Osaka Sun","time":null,"startMin":null},{"name":"Nil by Habit","time":null,"startMin":null},{"name":"Mollywater","time":null,"startMin":null},{"name":"Flavours","time":null,"startMin":null},{"name":"Girl Apocrypha","time":null,"startMin":null},{"name":"Sevastien Beau","time":null,"startMin":null},{"name":"Tasska","time":null,"startMin":null},{"name":"Bones Ate Arfa","time":null,"startMin":null},{"name":"Pav Saloon","time":null,"startMin":null},{"name":"Unb4rred","time":null,"startMin":null}],"tickets":"Free","link":"https://www.instagram.com/p/DXpdqDBlyF7/","notes":"Final day. Lineup TBD via IG. · 5-day showcase across 4 venues."},{"id":"U-BM-ST","date":"2026-05-17","day":"Sun","venue":"Bees Mouth","event":"Soft Top — The B Scene","parentEvent":null,"start":"","end":"","lineupRaw":"Still Unlikely | Rowan Sunita | Calb Musik | Soft Top","lineup":[{"name":"Still Unlikely","time":null,"startMin":null},{"name":"Rowan Sunita","time":null,"startMin":null},{"name":"Calb Musik","time":null,"startMin":null},{"name":"Soft Top","time":null,"startMin":null}],"tickets":"","link":"https://www.instagram.com/p/DXXHWQYkYhN/","notes":"Brighton band fronted by Miles Goodall. · Calmer Sunday-evening end-of-weekend show."},{"id":"U-DAL-GAR","date":"2026-05-17","day":"Sun","venue":"Daltons","event":"Garageland Presents The Garageland Escape","parentEvent":null,"start":"12:00","end":"00:00","lineupRaw":"The Restarts | Phat Problem | PEST | Kitchen Lover | Chem Sex Party | Glu | Casual Drag | The Clubheads | Dry Run | The Dirt | Big Cat Chic | Flick Knives | Music In Our Underpants | Table Football","lineup":[{"name":"The Restarts","time":null,"startMin":null},{"name":"Phat Problem","time":null,"startMin":null},{"name":"PEST","time":null,"startMin":null},{"name":"Kitchen Lover","time":null,"startMin":null},{"name":"Chem Sex Party","time":null,"startMin":null},{"name":"Glu","time":null,"startMin":null},{"name":"Casual Drag","time":null,"startMin":null},{"name":"The Clubheads","time":null,"startMin":null},{"name":"Dry Run","time":null,"startMin":null},{"name":"The Dirt","time":null,"startMin":null},{"name":"Big Cat Chic","time":null,"startMin":null},{"name":"Flick Knives","time":null,"startMin":null},{"name":"Music In Our Underpants","time":null,"startMin":null},{"name":"Table Football","time":null,"startMin":null}],"tickets":"Free","link":"https://link.dice.fm/v420a4774033","notes":"14 bands, all-day. Free DICE ticket."},{"id":"U-BR-BB","date":"2026-05-17","day":"Sun","venue":"The Brunswick","event":"Blip Blarp: An Alien Love Story","parentEvent":null,"start":"21:15","end":"","lineupRaw":"Alicia Queen","lineup":[{"name":"Alicia Queen","time":null,"startMin":null}],"tickets":"£15","link":"https://www.brunswickpub.co.uk/event-details/blip-blarp-an-alien-love-story-fringe-2","notes":"Fringe theatre. 18+. Comedy/burlesque/sci-fi."},{"id":"U-BR-SAL","date":"2026-05-17","day":"Sun","venue":"The Brunswick","event":"Snow Along the Line","parentEvent":null,"start":"14:45","end":"","lineupRaw":"Phil Jones | Hannah Barrie (narration)","lineup":[{"name":"Phil Jones","time":null,"startMin":null},{"name":"Hannah Barrie (narration)","time":null,"startMin":null}],"tickets":"£10","link":"https://www.brunswickpub.co.uk/event-details/snow-along-the-line-fringe","notes":"Fringe. Matinee all-ages / evening 18+. Two showings (14:45 & 19:15)."},{"id":"U-BR-MPH","date":"2026-05-17","day":"Sun","venue":"The Brunswick","event":"Mr Pineapple Head","parentEvent":null,"start":"11:45","end":"","lineupRaw":"Mr Pineapple Head","lineup":[{"name":"Mr Pineapple Head","time":null,"startMin":null}],"tickets":"£8","link":"https://www.brunswickpub.co.uk/event-details/mr-pineapple-head-fringe-6","notes":"Fringe. All ages. Silent clown/comedy."},{"id":"U-FR-OC","date":"2026-05-17","day":"Sun","venue":"Folklore Rooms","event":"The Ocelots","parentEvent":null,"start":"19:30","end":"","lineupRaw":"The Ocelots","lineup":[{"name":"The Ocelots","time":null,"startMin":null}],"tickets":"","link":"https://www.seetickets.com/event/the-ocelots/the-folklore-rooms/3605246","notes":"Fully seated, no support."},{"id":"U-CoB-JC","date":"2026-05-17","day":"Sun","venue":"Caroline of Brunswick","event":"John Callaghan's Cabaret Electro","parentEvent":null,"start":"17:45","end":"","lineupRaw":"John Callaghan","lineup":[{"name":"John Callaghan","time":null,"startMin":null}],"tickets":"£11","link":"https://carolineofbrunswick.co.uk/events/595-907-626-223-706-942-262-482-329-568-307-107-113-774-961-268-525-608-791-160-860-980-401-735-944-197-163-388-410-158-966-725-251-836-257-976-596-999-422-221-777-777-799-628-623-678-888-818-673-3-21/","notes":"Upper Lounge. 60-min cabaret."},{"id":"U-BD-SH","date":"2026-05-17","day":"Sun","venue":"Brighton Dome","event":"Oh To Believe in Another World: Shostakovich Symphony No.10","parentEvent":null,"start":"","end":"","lineupRaw":"","lineup":[],"tickets":"","link":"https://brightondome.org/whats-on/","notes":""},{"id":"U-RH-SS","date":"2026-05-17","day":"Sun","venue":"The Rose Hill","event":"The Slide Show Must Go On","parentEvent":null,"start":"19:00","end":"22:00","lineupRaw":"Chris Parkinson | Ben Bailey","lineup":[{"name":"Chris Parkinson","time":null,"startMin":null},{"name":"Ben Bailey","time":null,"startMin":null}],"tickets":"£10","link":"https://therosehill.co.uk/event/the-slide-show-must-go-on-may-17-2026/","notes":"Brighton Fringe. Comedy PowerPoint presentations."},{"id":"U-C2-J5","date":"2026-05-17","day":"Sun","venue":"Concorde 2","event":"John 5","parentEvent":null,"start":"19:30","end":"","lineupRaw":"John 5","lineup":[{"name":"John 5","time":null,"startMin":null}],"tickets":"","link":"https://www.concorde2.co.uk/event/john-5","notes":"14+, under-16s with adult."},{"id":"U-CHL-BL","date":"2026-05-17","day":"Sun","venue":"Chalk","event":"Barrington Levy (rescheduled)","parentEvent":null,"start":"18:00","end":"","lineupRaw":"Barrington Levy","lineup":[{"name":"Barrington Levy","time":null,"startMin":null}],"tickets":"£32.50+","link":"https://chalkvenue.com/live/new-date-barrington-levy","notes":"14+. New date."},{"id":"U-HR-WIMP","date":"2026-05-17","day":"Sun","venue":"The Hope & Ruin","event":"sp_ctrl presents WIMP","parentEvent":null,"start":"19:00","end":"22:00","lineupRaw":"WIMP | Had Sandy | Clouded | Claw Machine","lineup":[{"name":"WIMP","time":null,"startMin":null},{"name":"Had Sandy","time":null,"startMin":null},{"name":"Clouded","time":null,"startMin":null},{"name":"Claw Machine","time":null,"startMin":null}],"tickets":"£6 adv / £8 door","link":"https://www.hope.pub/event/wimp-had-sandy-clouded-claw-machine/","notes":"18+. Stairs required."}];
+    const EVENTS_BY_ID = Object.fromEntries(EVENTS.map(e => [e.id, e]));
+    const SAVED_KEY = "alt-saved-v1";
+    const SAVED_VENUES_KEY = "alt-saved-venues-v1";
+    const HOUR_PX = 64;
+    const MOBILE_HOUR_PX = 56;
+    const DEFAULT_DURATION_MIN = 90;
+    const UNTIMED_BLOCK_MIN = 60;
+
+    let saved = new Set();
+    let savedVenues = new Set();
+    try { saved = new Set(JSON.parse(localStorage.getItem(SAVED_KEY) || "[]")); } catch {}
+    try { savedVenues = new Set(JSON.parse(localStorage.getItem(SAVED_VENUES_KEY) || "[]")); } catch {}
+    let currentDay = "Fri";
+    let showSavedOnly = false;
+    let showSavedVenuesOnly = false;
+
+    function persistSaved() { localStorage.setItem(SAVED_KEY, JSON.stringify([...saved])); }
+    function persistSavedVenues() { localStorage.setItem(SAVED_VENUES_KEY, JSON.stringify([...savedVenues])); }
+
+    function parseMin(s) {
+      if (!s) return null;
+      const m = String(s).match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      const h = +m[1], mn = +m[2];
+      return (h < 8 ? h + 24 : h) * 60 + mn;
+    }
+
+    function formatHourLabel(min) {
+      const h = Math.floor(min / 60) % 24;
+      return String(h).padStart(2, "0") + ":00";
+    }
+
+    function assignLanes(events) {
+      // events sorted by start. returns array same length with .lane and total .lanes
+      const lanes = [];
+      const out = [];
+      for (const e of events) {
+        const s = e._startMin;
+        const en = e._endMin;
+        let assigned = -1;
+        for (let i = 0; i < lanes.length; i++) {
+          if (lanes[i] <= s) { lanes[i] = en; assigned = i; break; }
+        }
+        if (assigned === -1) { lanes.push(en); assigned = lanes.length - 1; }
+        out.push({ ...e, lane: assigned });
+      }
+      return { items: out, total: Math.max(1, lanes.length) };
+    }
+
+    function render() {
+      const dayEvents = EVENTS.filter(e => e.day === currentDay);
+      const filtered = showSavedOnly ? dayEvents.filter(e => saved.has(e.id)) : dayEvents;
+
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+
+      if (filtered.length === 0) {
+        grid.style.gridTemplateColumns = "1fr";
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = showSavedOnly ? "Nothing saved for " + currentDay + " yet." : "No events for " + currentDay;
+        grid.appendChild(empty);
+        updateCount();
+        return;
+      }
+
+      // Annotate events with start/end minutes
+      for (const e of filtered) {
+        e._startMin = parseMin(e.start);
+        const endMin = parseMin(e.end);
+        if (e._startMin !== null) {
+          e._endMin = endMin !== null && endMin > e._startMin
+            ? endMin
+            : e._startMin + DEFAULT_DURATION_MIN;
+        } else {
+          e._startMin = null;
+          e._endMin = null;
+        }
+      }
+
+      // Compute grid bounds from timed events
+      const timed = filtered.filter(e => e._startMin !== null);
+      let minMin = null, maxMin = null;
+      for (const e of timed) {
+        if (minMin === null || e._startMin < minMin) minMin = e._startMin;
+        if (maxMin === null || e._endMin > maxMin) maxMin = e._endMin;
+      }
+      if (minMin === null) { minMin = 12 * 60; maxMin = 23 * 60; }
+      const gridStart = Math.floor(minMin / 60) * 60;
+      const gridEnd = Math.ceil(maxMin / 60) * 60;
+      const totalMin = gridEnd - gridStart;
+      const hourPx = window.innerWidth <= 720 ? MOBILE_HOUR_PX : HOUR_PX;
+      const pxPerMin = hourPx / 60;
+
+      // Untimed events: stack above the timeline using negative offsets
+      const untimedByVenue = new Map();
+      for (const e of filtered) {
+        if (e._startMin === null) {
+          if (!untimedByVenue.has(e.venue)) untimedByVenue.set(e.venue, []);
+          untimedByVenue.get(e.venue).push(e);
+        }
+      }
+      const maxUntimedCount = [...untimedByVenue.values()].reduce((m, a) => Math.max(m, a.length), 0);
+      const untimedAreaPx = maxUntimedCount * (UNTIMED_BLOCK_MIN + 4);
+
+      const gridBodyHeight = totalMin * pxPerMin + untimedAreaPx + 8;
+
+      // Group timed events by venue
+      const venuesMap = new Map();
+      for (const e of filtered) {
+        if (!venuesMap.has(e.venue)) venuesMap.set(e.venue, []);
+        venuesMap.get(e.venue).push(e);
+      }
+      const allVenues = [...venuesMap.keys()].sort((a, b) => a.localeCompare(b));
+      const venues = showSavedVenuesOnly ? allVenues.filter(v => savedVenues.has(v)) : allVenues;
+
+      grid.style.setProperty("--ncols", venues.length);
+      grid.style.setProperty("--hour-h", hourPx + "px");
+      grid.style.gridTemplateColumns =
+        "var(--gutter-w) repeat(" + venues.length + ", var(--venue-w))";
+
+      // Gutter column
+      const gutter = document.createElement("div");
+      gutter.className = "gutter";
+      const gh = document.createElement("div");
+      gh.className = "gutter-header";
+      gh.textContent = currentDay + " " + (currentDay === "Fri" ? "15" : currentDay === "Sat" ? "16" : "17");
+      gutter.appendChild(gh);
+      const gb = document.createElement("div");
+      gb.className = "gutter-body";
+      gb.style.height = gridBodyHeight + "px";
+      // Hour labels (positioned within timed area only — offset by untimedAreaPx)
+      for (let m = gridStart; m <= gridEnd; m += 60) {
+        const label = document.createElement("div");
+        label.className = "hour-label" + (m % 180 === 0 ? " major" : "");
+        const offset = untimedAreaPx + (m - gridStart) * pxPerMin;
+        label.style.top = offset + "px";
+        label.textContent = formatHourLabel(m);
+        gb.appendChild(label);
+      }
+      gutter.appendChild(gb);
+      grid.appendChild(gutter);
+
+      // Venue columns
+      for (const v of venues) {
+        const col = document.createElement("div");
+        col.className = "venue-col" + (savedVenues.has(v) ? " venue-saved" : "");
+        const hdr = document.createElement("div");
+        hdr.className = "venue-header";
+        hdr.textContent = v;
+        hdr.title = "Click to highlight venue";
+        hdr.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          if (savedVenues.has(v)) savedVenues.delete(v); else savedVenues.add(v);
+          persistSavedVenues();
+          col.classList.toggle("venue-saved");
+          updateCount();
+        });
+        col.appendChild(hdr);
+        const body = document.createElement("div");
+        body.className = "venue-body";
+        body.style.height = gridBodyHeight + "px";
+
+        const vEvents = venuesMap.get(v).slice().sort((a, b) => (a._startMin ?? 99999) - (b._startMin ?? 99999));
+        const vTimed = vEvents.filter(e => e._startMin !== null);
+        const vUntimed = vEvents.filter(e => e._startMin === null);
+
+        // Untimed blocks at top
+        vUntimed.forEach((e, idx) => {
+          const el = createEventEl(e, true);
+          el.style.top = (idx * (UNTIMED_BLOCK_MIN + 4)) + "px";
+          el.style.left = "3px";
+          el.style.right = "3px";
+          el.style.height = UNTIMED_BLOCK_MIN + "px";
+          body.appendChild(el);
+        });
+
+        // Timed blocks with lane assignment for overlaps
+        const { items, total: nLanes } = assignLanes(vTimed);
+        for (const it of items) {
+          const el = createEventEl(it, false);
+          const topPx = untimedAreaPx + (it._startMin - gridStart) * pxPerMin;
+          const heightPx = (it._endMin - it._startMin) * pxPerMin - 2;
+          const laneFracW = 1 / nLanes;
+          el.style.top = topPx + "px";
+          el.style.height = Math.max(28, heightPx) + "px";
+          el.style.left = "calc(" + (it.lane * laneFracW * 100) + "% + 3px)";
+          el.style.right = "calc(" + ((nLanes - 1 - it.lane) * laneFracW * 100) + "% + 3px)";
+          body.appendChild(el);
+        }
+
+        col.appendChild(body);
+        grid.appendChild(col);
+      }
+
+      updateCount();
+    }
+
+    function createEventEl(e, untimed) {
+      const el = document.createElement("div");
+      el.className = "event" + (saved.has(e.id) ? " saved" : "") + (untimed ? " untimed" : "");
+      el.dataset.id = e.id;
+      el.title = "Tap for details · " + e.event;
+
+      const name = document.createElement("div");
+      name.className = "event-name";
+      name.textContent = e.event;
+      el.appendChild(name);
+
+      const time = document.createElement("div");
+      time.className = "event-time";
+      time.textContent = untimed ? "" : (e.start + (e.end ? " – " + e.end : ""));
+      el.appendChild(time);
+
+      if (Array.isArray(e.lineup) && e.lineup.length) {
+        const list = document.createElement("ul");
+        list.className = "event-lineup-list";
+        for (const ent of e.lineup) {
+          const li = document.createElement("li");
+          const t = document.createElement("span");
+          t.className = "lineup-time";
+          t.textContent = ent.time || "";
+          li.appendChild(t);
+          const n = document.createElement("span");
+          n.className = "lineup-name" + (ent.time ? "" : " untimed");
+          n.textContent = ent.name;
+          li.appendChild(n);
+          list.appendChild(li);
+        }
+        el.appendChild(list);
+      }
+
+      el.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openModal(e.id);
+      });
+
+      return el;
+    }
+
+    function updateCount() {
+      const c = document.getElementById("saved-count");
+      c.textContent = saved.size;
+      document.getElementById("saved-venues-count").textContent = savedVenues.size;
+      const total = EVENTS.length;
+      const fri = EVENTS.filter(e => e.day === "Fri").length;
+      const sat = EVENTS.filter(e => e.day === "Sat").length;
+      const sun = EVENTS.filter(e => e.day === "Sun").length;
+      const venueBit = savedVenues.size ? " · " + savedVenues.size + " venues highlighted" : "";
+      document.getElementById("counts").textContent =
+        total + " events · Fri " + fri + " · Sat " + sat + " · Sun " + sun + " · " + saved.size + " saved" + venueBit;
+    }
+
+    // ===== Modal =====
+    const modalOverlay = document.getElementById("modal-overlay");
+    const modal = document.getElementById("modal");
+
+    function openModal(id) {
+      const e = EVENTS_BY_ID[id];
+      if (!e) return;
+      renderModal(e);
+      modalOverlay.classList.add("open");
+      modalOverlay.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove("open");
+      modalOverlay.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    }
+
+    function renderModal(e) {
+      modal.innerHTML = "";
+      // Head
+      const head = document.createElement("div");
+      head.className = "modal-head";
+      const title = document.createElement("div");
+      title.className = "modal-title";
+      title.textContent = e.event;
+      if (e.parentEvent) {
+        const sub = document.createElement("div");
+        sub.style.cssText = "font-size:11px;font-weight:400;color:var(--text-muted);margin-top:3px;";
+        sub.textContent = e.parentEvent;
+        title.appendChild(sub);
+      }
+      head.appendChild(title);
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "modal-close";
+      closeBtn.setAttribute("aria-label", "Close");
+      closeBtn.innerHTML = "&times;";
+      closeBtn.addEventListener("click", closeModal);
+      head.appendChild(closeBtn);
+      modal.appendChild(head);
+
+      // Body
+      const body = document.createElement("div");
+      body.className = "modal-body";
+      const dayLabel = e.day + " " + (e.day === "Fri" ? "15" : e.day === "Sat" ? "16" : "17") + " May 2026";
+      body.appendChild(modalRow("When", e.start ? dayLabel + " · " + e.start + (e.end ? " – " + e.end : "") : dayLabel + " · time TBA"));
+      body.appendChild(modalRow("Venue", e.venue));
+      if (e.tickets) body.appendChild(modalRow("Tickets", e.tickets));
+
+      if (Array.isArray(e.lineup) && e.lineup.length) {
+        const labelRow = document.createElement("div");
+        labelRow.className = "modal-row";
+        const lbl = document.createElement("div"); lbl.className = "label"; lbl.textContent = "Lineup";
+        const val = document.createElement("div"); val.className = "value";
+        const ul = document.createElement("ul"); ul.className = "modal-lineup";
+        for (const ent of e.lineup) {
+          const li = document.createElement("li");
+          const t = document.createElement("span"); t.className = "lt"; t.textContent = ent.time || "—";
+          const n = document.createElement("span"); n.className = "ln" + (ent.time ? "" : " untimed"); n.textContent = ent.name;
+          li.appendChild(t); li.appendChild(n);
+          ul.appendChild(li);
+        }
+        val.appendChild(ul);
+        labelRow.appendChild(lbl); labelRow.appendChild(val);
+        body.appendChild(labelRow);
+      }
+
+      if (e.notes) {
+        const notesWrap = document.createElement("div");
+        notesWrap.className = "modal-notes";
+        notesWrap.textContent = e.notes;
+        body.appendChild(notesWrap);
+      }
+      modal.appendChild(body);
+
+      // Foot — favorite + link
+      const foot = document.createElement("div");
+      foot.className = "modal-foot";
+
+      const fav = document.createElement("button");
+      const isSaved = saved.has(e.id);
+      fav.className = "btn btn-fav" + (isSaved ? " is-saved" : "");
+      fav.textContent = isSaved ? "★ Saved" : "☆ Save";
+      fav.addEventListener("click", () => {
+        if (saved.has(e.id)) saved.delete(e.id); else saved.add(e.id);
+        persistSaved();
+        const now = saved.has(e.id);
+        fav.classList.toggle("is-saved", now);
+        fav.textContent = now ? "★ Saved" : "☆ Save";
+        // Sync block in the grid
+        const block = document.querySelector('.event[data-id="' + cssEscape(e.id) + '"]');
+        if (block) block.classList.toggle("saved", now);
+        updateCount();
+      });
+      foot.appendChild(fav);
+
+      if (e.link) {
+        const link = document.createElement("a");
+        link.className = "btn btn-link";
+        link.href = e.link;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.style.display = "flex";
+        link.style.alignItems = "center";
+        link.style.justifyContent = "center";
+        link.style.textDecoration = "none";
+        link.textContent = linkLabel(e.link);
+        foot.appendChild(link);
+      }
+      modal.appendChild(foot);
+    }
+
+    function modalRow(label, value) {
+      const row = document.createElement("div");
+      row.className = "modal-row";
+      const lbl = document.createElement("div"); lbl.className = "label"; lbl.textContent = label;
+      const val = document.createElement("div"); val.className = "value"; val.textContent = value;
+      row.appendChild(lbl); row.appendChild(val);
+      return row;
+    }
+
+    function linkLabel(url) {
+      try {
+        const h = new URL(url).hostname.replace(/^www\./, "");
+        if (h.includes("instagram")) return "Open Instagram ↗";
+        if (h.includes("facebook")) return "Open Facebook ↗";
+        if (h.includes("dice.fm")) return "Open DICE ↗";
+        if (h.includes("seetickets")) return "See Tickets ↗";
+        if (h.includes("axs")) return "Open AXS ↗";
+        return "Open " + h + " ↗";
+      } catch { return "Open link ↗"; }
+    }
+
+    function cssEscape(s) {
+      return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/"/g, '\\"');
+    }
+
+    modalOverlay.addEventListener("click", (ev) => {
+      if (ev.target === modalOverlay) closeModal();
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && modalOverlay.classList.contains("open")) closeModal();
+    });
+
+    document.querySelectorAll(".day-tab").forEach(t => {
+      t.addEventListener("click", () => {
+        document.querySelectorAll(".day-tab").forEach(x => x.classList.remove("active"));
+        t.classList.add("active");
+        currentDay = t.dataset.day;
+        document.getElementById("grid-wrap").scrollTop = 0;
+        document.getElementById("grid-wrap").scrollLeft = 0;
+        render();
+      });
+    });
+
+    document.getElementById("toggle-saved").addEventListener("click", function() {
+      showSavedOnly = !showSavedOnly;
+      this.classList.toggle("active", showSavedOnly);
+      render();
+    });
+
+    document.getElementById("toggle-saved-venues").addEventListener("click", function() {
+      showSavedVenuesOnly = !showSavedVenuesOnly;
+      this.classList.toggle("active", showSavedVenuesOnly);
+      render();
+    });
+
+    document.getElementById("clear-saved").addEventListener("click", () => {
+      if (saved.size === 0 && savedVenues.size === 0) return;
+      const bits = [];
+      if (saved.size) bits.push(saved.size + " event" + (saved.size === 1 ? "" : "s"));
+      if (savedVenues.size) bits.push(savedVenues.size + " venue" + (savedVenues.size === 1 ? "" : "s"));
+      if (!confirm("Clear " + bits.join(" and ") + "?")) return;
+      saved = new Set();
+      savedVenues = new Set();
+      persistSaved();
+      persistSavedVenues();
+      render();
+    });
+
+    // Re-render on resize if px-per-hour changes class
+    let lastNarrow = window.innerWidth <= 720;
+    window.addEventListener("resize", () => {
+      const nowNarrow = window.innerWidth <= 720;
+      if (nowNarrow !== lastNarrow) { lastNarrow = nowNarrow; render(); }
+    });
+
+    render();
+  </script>
+</body>
+</html>
