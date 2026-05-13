@@ -16,6 +16,51 @@
     />
   </head>
   <body>
+    <style>
+      #alt-banner {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+        background: linear-gradient(90deg, #d95738 0%, #e8763c 100%);
+        color: #fff; font-family: system-ui, sans-serif;
+        display: flex; align-items: center; justify-content: center;
+        gap: 12px; padding: 10px 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+        animation: slidein 0.4s ease-out;
+      }
+      @keyframes slidein { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+      #alt-banner a {
+        color: #fff; font-weight: 700; font-size: 15px; text-decoration: none;
+        background: rgba(255,255,255,0.18); border-radius: 6px; padding: 4px 10px;
+        border: 1.5px solid rgba(255,255,255,0.5);
+        transition: background 0.15s;
+      }
+      #alt-banner a:hover { background: rgba(255,255,255,0.32); }
+      #alt-banner span { font-size: 14px; }
+      #alt-banner button {
+        margin-left: auto; background: transparent; border: none; color: rgba(255,255,255,0.7);
+        cursor: pointer; font-size: 18px; line-height: 1; padding: 0 2px;
+        flex-shrink: 0;
+      }
+      #alt-banner button:hover { color: #fff; }
+    </style>
+    <script>
+      (function() {
+        var EXPIRE = new Date("2026-05-19T00:00:00").getTime();
+        var DISMISSED_KEY = "alt-banner-dismissed";
+        if (Date.now() > EXPIRE) return;
+        if (localStorage.getItem(DISMISSED_KEY)) return;
+        var b = document.createElement("div"); b.id = "alt-banner";
+        b.innerHTML = '<span>🎸 Great Escape weekend is here!</span>'
+          + '<a href="/gigs/alt/">View the Alt Gigs grid ↗</a>'
+          + '<button aria-label="Dismiss">&times;</button>';
+        b.querySelector("button").addEventListener("click", function() {
+          localStorage.setItem(DISMISSED_KEY, "1");
+          b.remove();
+          document.getElementById("root").style.paddingTop = "";
+        });
+        document.body.prepend(b);
+        document.getElementById("root").style.paddingTop = "46px";
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
