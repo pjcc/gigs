@@ -32,17 +32,17 @@ const events = wd.events.map(ev => {
     if (m.start && !ev.start) ev.start = m.start;
     if (m.end && !ev.end) ev.end = m.end;
     if (m.tickets && !ev.tickets) ev.tickets = m.tickets;
-    if (m.notes_extra) ev.notes = (ev.notes ? ev.notes + " Â· " : "") + m.notes_extra;
+    if (m.notes_extra) ev.notes = (ev.notes ? ev.notes + " · " : "") + m.notes_extra;
   }
-  if (n) ev.notes = (ev.notes ? ev.notes + " Â· " : "") + (n.notes || "Lineup not in IG post.");
+  if (n) ev.notes = (ev.notes ? ev.notes + " · " : "") + (n.notes || "Lineup not in IG post.");
   return ev;
 });
 
 function parseLineup(raw) {
   if (!raw) return [];
   const entries = raw.split("|").map(s => s.trim()).filter(Boolean).map(s => {
-    // Match "Name (HH:MM)" or "Name (HH:MM-HH:MM)" â€” handles trailing details inside parens too.
-    const m = s.match(/^(.+?)\s*\((\d{1,2}[:.]\d{2})(?:\s*[-â€“â€”]\s*\d{1,2}[:.]\d{2})?\)\s*$/);
+    // Match "Name (HH:MM)" or "Name (HH:MM-HH:MM)" — handles trailing details inside parens too.
+    const m = s.match(/^(.+?)\s*\((\d{1,2}[:.]\d{2})(?:\s*[-–—]\s*\d{1,2}[:.]\d{2})?\)\s*$/);
     if (m) {
       const name = m[1].trim();
       const timeStr = m[2].replace(".", ":");
@@ -67,6 +67,7 @@ function explode(e, parsed) {
       date: e.date, day: e.day, venue: e.venue,
       event: act.name,
       parentEvent: e.event,
+      genre: e.genre || "music",
       start: act.time,
       end: next ? next.time : (e.end || ""),
       lineupRaw: "",
@@ -86,6 +87,7 @@ const pageEvents = events.flatMap(e => {
   return [{
     id: e.id, date: e.date, day: e.day, venue: e.venue, event: e.event,
     parentEvent: null,
+    genre: e.genre || "music",
     start: e.start || "", end: e.end || "",
     lineupRaw: e.lineup || "",
     lineup: parsed,
@@ -99,7 +101,7 @@ const html = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Alt Escape â€” Brighton 15-17 May 2026</title>
+  <title>Alt Escape — Brighton 15-17 May 2026</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300..700&display=swap" rel="stylesheet">
@@ -119,7 +121,7 @@ const html = `<!doctype html>
       --border: #35353a;
       --border-light: #2c2c30;
       --gutter-w: 56px;
-      --venue-w: 168px;
+      --venue-w: 118px;
       --hour-h: 64px;
       --header-h: 38px;
     }
@@ -154,7 +156,7 @@ const html = `<!doctype html>
       margin-top: 10px;
       align-items: center;
     }
-    .day-tab, .pill {
+    .day-tab, .pill, .genre-pill {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text-muted);
@@ -165,11 +167,32 @@ const html = `<!doctype html>
       cursor: pointer;
       transition: all 0.15s;
     }
-    .day-tab:hover, .pill:hover { color: var(--text); border-color: var(--text-muted); }
+    .day-tab:hover, .pill:hover, .genre-pill:hover { color: var(--text); border-color: var(--text-muted); }
     .day-tab.active { background: var(--text); color: var(--bg); border-color: var(--text); }
     .pill.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+    .genre-pill[data-genre="music"].active    { background: rgba(78,205,196,0.15); color: #4ecdc4; border-color: #4ecdc4; }
+    .genre-pill[data-genre="comedy"].active   { background: rgba(255,199,44,0.15);  color: #ffc72c; border-color: #ffc72c; }
+    .genre-pill[data-genre="theatre"].active  { background: rgba(175,122,232,0.15); color: #af7ae8; border-color: #af7ae8; }
     .saved-count { color: var(--accent); font-weight: 600; }
     .spacer { flex: 1; }
+
+    .page-body {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #gutter-host {
+      flex-shrink: 0;
+      width: var(--gutter-w);
+      background: var(--bg);
+      border-right: 1px solid var(--border-light);
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
     .grid-wrap {
       flex: 1;
@@ -178,16 +201,44 @@ const html = `<!doctype html>
     }
 
     .grid {
-      display: grid;
-      grid-template-columns: var(--gutter-w) repeat(var(--ncols), var(--venue-w));
+      display: flex;
+      flex-direction: row;
       min-height: 100%;
     }
 
-    .gutter, .venue-col {
+    .venue-col {
       border-right: 1px solid var(--border-light);
       position: relative;
+      flex-shrink: 0;
+      width: var(--venue-w);
     }
-    .gutter-header, .venue-header {
+
+    .gutter-header {
+      flex-shrink: 0;
+      background: var(--bg);
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 0 6px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .gutter-body-clip {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .gutter-body {
+      will-change: transform;
+    }
+
+    .venue-header {
       position: sticky;
       top: 0;
       z-index: 3;
@@ -202,10 +253,13 @@ const html = `<!doctype html>
       padding: 0 6px;
       border-bottom: 1px solid var(--border);
       border-right: 1px solid var(--border-light);
+      color: var(--text);
+      line-height: 1.15;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .gutter-header { color: var(--text-muted); font-size: 11px; }
-    .venue-header { color: var(--text); line-height: 1.15; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
     .venue-header:hover { background: var(--bg-card-hi); }
     .venue-col.venue-saved .venue-header {
       background: var(--accent-soft);
@@ -215,8 +269,6 @@ const html = `<!doctype html>
     .venue-col.venue-saved .venue-body {
       background-color: rgba(217, 87, 56, 0.04);
     }
-    .gutter { position: sticky; left: 0; z-index: 4; background: var(--bg); }
-    .gutter-header { z-index: 6; background: var(--bg); }
 
     .gutter-body, .venue-body {
       position: relative;
@@ -471,7 +523,7 @@ const html = `<!doctype html>
     .legend a { color: var(--text-muted); }
 
     @media (max-width: 720px) {
-      :root { --venue-w: 132px; --hour-h: 56px; --gutter-w: 48px; }
+      :root { --venue-w: 92px; --hour-h: 56px; --gutter-w: 48px; }
       .topbar { padding: 10px 12px 8px; }
       .topbar h1 { font-size: 16px; }
     }
@@ -479,21 +531,27 @@ const html = `<!doctype html>
 </head>
 <body>
   <div class="topbar">
-    <h1>Alt Escape â€” Brighton 15â€“17 May 2026</h1>
+    <h1>Alt Escape — Brighton 15–17 May 2026</h1>
     <div class="sub">Unofficial gigs around Great Escape weekend. Tap a block to save it.</div>
     <div class="controls">
       <button class="day-tab active" data-day="Fri">Fri 15</button>
       <button class="day-tab" data-day="Sat">Sat 16</button>
       <button class="day-tab" data-day="Sun">Sun 17</button>
       <span class="spacer"></span>
+      <button class="genre-pill active" data-genre="music">Music</button>
+      <button class="genre-pill active" data-genre="comedy">Comedy</button>
+      <button class="genre-pill active" data-genre="theatre">Theatre</button>
       <button class="pill" id="toggle-saved">Saved gigs <span class="saved-count" id="saved-count">0</span></button>
       <button class="pill" id="toggle-saved-venues">Saved venues <span class="saved-count" id="saved-venues-count">0</span></button>
       <button class="pill" id="clear-saved">Clear all</button>
     </div>
   </div>
 
-  <div class="grid-wrap" id="grid-wrap">
-    <div class="grid" id="grid"></div>
+  <div class="page-body">
+    <div id="gutter-host"></div>
+    <div class="grid-wrap" id="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
   </div>
 
   <div class="legend">
@@ -521,6 +579,7 @@ const html = `<!doctype html>
     let currentDay = "Fri";
     let showSavedOnly = false;
     let showSavedVenuesOnly = false;
+    let activeGenres = new Set(["music", "comedy", "theatre"]);
 
     function persistSaved() { localStorage.setItem(SAVED_KEY, JSON.stringify([...saved])); }
     function persistSavedVenues() { localStorage.setItem(SAVED_VENUES_KEY, JSON.stringify([...savedVenues])); }
@@ -556,14 +615,14 @@ const html = `<!doctype html>
     }
 
     function render() {
-      const dayEvents = EVENTS.filter(e => e.day === currentDay);
+      const dayEvents = EVENTS.filter(e => e.day === currentDay && activeGenres.has(e.genre));
       const filtered = showSavedOnly ? dayEvents.filter(e => saved.has(e.id)) : dayEvents;
 
       const grid = document.getElementById("grid");
       grid.innerHTML = "";
 
       if (filtered.length === 0) {
-        grid.style.gridTemplateColumns = "1fr";
+        grid.style.width = "100%";
         const empty = document.createElement("div");
         empty.className = "empty";
         empty.textContent = showSavedOnly ? "Nothing saved for " + currentDay + " yet." : "No events for " + currentDay;
@@ -622,22 +681,21 @@ const html = `<!doctype html>
       const allVenues = [...venuesMap.keys()].sort((a, b) => a.localeCompare(b));
       const venues = showSavedVenuesOnly ? allVenues.filter(v => savedVenues.has(v)) : allVenues;
 
-      grid.style.setProperty("--ncols", venues.length);
       grid.style.setProperty("--hour-h", hourPx + "px");
-      grid.style.gridTemplateColumns =
-        "var(--gutter-w) repeat(" + venues.length + ", var(--venue-w))";
 
-      // Gutter column
-      const gutter = document.createElement("div");
-      gutter.className = "gutter";
+      // Gutter column — lives outside grid-wrap so it never scrolls horizontally
+      const gutterHost = document.getElementById("gutter-host");
+      gutterHost.innerHTML = "";
       const gh = document.createElement("div");
       gh.className = "gutter-header";
       gh.textContent = currentDay + " " + (currentDay === "Fri" ? "15" : currentDay === "Sat" ? "16" : "17");
-      gutter.appendChild(gh);
+      gutterHost.appendChild(gh);
+      const gbClip = document.createElement("div");
+      gbClip.className = "gutter-body-clip";
       const gb = document.createElement("div");
       gb.className = "gutter-body";
       gb.style.height = gridBodyHeight + "px";
-      // Hour labels (positioned within timed area only â€” offset by untimedAreaPx)
+      // Hour labels (positioned within timed area only — offset by untimedAreaPx)
       for (let m = gridStart; m <= gridEnd; m += 60) {
         const label = document.createElement("div");
         label.className = "hour-label" + (m % 180 === 0 ? " major" : "");
@@ -646,8 +704,8 @@ const html = `<!doctype html>
         label.textContent = formatHourLabel(m);
         gb.appendChild(label);
       }
-      gutter.appendChild(gb);
-      grid.appendChild(gutter);
+      gbClip.appendChild(gb);
+      gutterHost.appendChild(gbClip);
 
       // Venue columns
       for (const v of venues) {
@@ -708,7 +766,7 @@ const html = `<!doctype html>
       const el = document.createElement("div");
       el.className = "event" + (saved.has(e.id) ? " saved" : "") + (untimed ? " untimed" : "");
       el.dataset.id = e.id;
-      el.title = "Tap for details Â· " + e.event;
+      el.title = "Tap for details · " + e.event;
 
       const name = document.createElement("div");
       name.className = "event-name";
@@ -717,18 +775,21 @@ const html = `<!doctype html>
 
       const time = document.createElement("div");
       time.className = "event-time";
-      time.textContent = untimed ? "" : (e.start + (e.end ? " â€“ " + e.end : ""));
+      time.textContent = untimed ? "" : (e.start + (e.end ? " – " + e.end : ""));
       el.appendChild(time);
 
       if (Array.isArray(e.lineup) && e.lineup.length) {
         const list = document.createElement("ul");
         list.className = "event-lineup-list";
+        const hasTimes = e.lineup.some(ent => ent.time);
         for (const ent of e.lineup) {
           const li = document.createElement("li");
-          const t = document.createElement("span");
-          t.className = "lineup-time";
-          t.textContent = ent.time || "";
-          li.appendChild(t);
+          if (hasTimes) {
+            const t = document.createElement("span");
+            t.className = "lineup-time";
+            t.textContent = ent.time || "";
+            li.appendChild(t);
+          }
           const n = document.createElement("span");
           n.className = "lineup-name" + (ent.time ? "" : " untimed");
           n.textContent = ent.name;
@@ -754,9 +815,9 @@ const html = `<!doctype html>
       const fri = EVENTS.filter(e => e.day === "Fri").length;
       const sat = EVENTS.filter(e => e.day === "Sat").length;
       const sun = EVENTS.filter(e => e.day === "Sun").length;
-      const venueBit = savedVenues.size ? " Â· " + savedVenues.size + " venues highlighted" : "";
+      const venueBit = savedVenues.size ? " · " + savedVenues.size + " venues highlighted" : "";
       document.getElementById("counts").textContent =
-        total + " events Â· Fri " + fri + " Â· Sat " + sat + " Â· Sun " + sun + " Â· " + saved.size + " saved" + venueBit;
+        total + " events · Fri " + fri + " · Sat " + sat + " · Sun " + sun + " · " + saved.size + " saved" + venueBit;
     }
 
     // ===== Modal =====
@@ -805,7 +866,7 @@ const html = `<!doctype html>
       const body = document.createElement("div");
       body.className = "modal-body";
       const dayLabel = e.day + " " + (e.day === "Fri" ? "15" : e.day === "Sat" ? "16" : "17") + " May 2026";
-      body.appendChild(modalRow("When", e.start ? dayLabel + " Â· " + e.start + (e.end ? " â€“ " + e.end : "") : dayLabel + " Â· time TBA"));
+      body.appendChild(modalRow("When", e.start ? dayLabel + " · " + e.start + (e.end ? " – " + e.end : "") : dayLabel + " · time TBA"));
       body.appendChild(modalRow("Venue", e.venue));
       if (e.tickets) body.appendChild(modalRow("Tickets", e.tickets));
 
@@ -817,7 +878,7 @@ const html = `<!doctype html>
         const ul = document.createElement("ul"); ul.className = "modal-lineup";
         for (const ent of e.lineup) {
           const li = document.createElement("li");
-          const t = document.createElement("span"); t.className = "lt"; t.textContent = ent.time || "â€”";
+          const t = document.createElement("span"); t.className = "lt"; t.textContent = ent.time || "—";
           const n = document.createElement("span"); n.className = "ln" + (ent.time ? "" : " untimed"); n.textContent = ent.name;
           li.appendChild(t); li.appendChild(n);
           ul.appendChild(li);
@@ -835,20 +896,20 @@ const html = `<!doctype html>
       }
       modal.appendChild(body);
 
-      // Foot â€” favorite + link
+      // Foot — favorite + link
       const foot = document.createElement("div");
       foot.className = "modal-foot";
 
       const fav = document.createElement("button");
       const isSaved = saved.has(e.id);
       fav.className = "btn btn-fav" + (isSaved ? " is-saved" : "");
-      fav.textContent = isSaved ? "â˜… Saved" : "â˜† Save";
+      fav.textContent = isSaved ? "★ Saved" : "☆ Save";
       fav.addEventListener("click", () => {
         if (saved.has(e.id)) saved.delete(e.id); else saved.add(e.id);
         persistSaved();
         const now = saved.has(e.id);
         fav.classList.toggle("is-saved", now);
-        fav.textContent = now ? "â˜… Saved" : "â˜† Save";
+        fav.textContent = now ? "★ Saved" : "☆ Save";
         // Sync block in the grid
         const block = document.querySelector('.event[data-id="' + cssEscape(e.id) + '"]');
         if (block) block.classList.toggle("saved", now);
@@ -884,13 +945,13 @@ const html = `<!doctype html>
     function linkLabel(url) {
       try {
         const h = new URL(url).hostname.replace(/^www\\./, "");
-        if (h.includes("instagram")) return "Open Instagram â†—";
-        if (h.includes("facebook")) return "Open Facebook â†—";
-        if (h.includes("dice.fm")) return "Open DICE â†—";
-        if (h.includes("seetickets")) return "See Tickets â†—";
-        if (h.includes("axs")) return "Open AXS â†—";
-        return "Open " + h + " â†—";
-      } catch { return "Open link â†—"; }
+        if (h.includes("instagram")) return "Open Instagram ↗";
+        if (h.includes("facebook")) return "Open Facebook ↗";
+        if (h.includes("dice.fm")) return "Open DICE ↗";
+        if (h.includes("seetickets")) return "See Tickets ↗";
+        if (h.includes("axs")) return "Open AXS ↗";
+        return "Open " + h + " ↗";
+      } catch { return "Open link ↗"; }
     }
 
     function cssEscape(s) {
@@ -904,13 +965,29 @@ const html = `<!doctype html>
       if (ev.key === "Escape" && modalOverlay.classList.contains("open")) closeModal();
     });
 
+    document.querySelectorAll(".genre-pill").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const g = btn.dataset.genre;
+        if (activeGenres.has(g)) {
+          if (activeGenres.size === 1) return; // keep at least one
+          activeGenres.delete(g);
+          btn.classList.remove("active");
+        } else {
+          activeGenres.add(g);
+          btn.classList.add("active");
+        }
+        render();
+      });
+    });
+
     document.querySelectorAll(".day-tab").forEach(t => {
       t.addEventListener("click", () => {
         document.querySelectorAll(".day-tab").forEach(x => x.classList.remove("active"));
         t.classList.add("active");
         currentDay = t.dataset.day;
-        document.getElementById("grid-wrap").scrollTop = 0;
-        document.getElementById("grid-wrap").scrollLeft = 0;
+        const gw = document.getElementById("grid-wrap");
+        gw.scrollTop = 0;
+        gw.scrollLeft = 0;
         render();
       });
     });
@@ -946,6 +1023,12 @@ const html = `<!doctype html>
       const nowNarrow = window.innerWidth <= 720;
       if (nowNarrow !== lastNarrow) { lastNarrow = nowNarrow; render(); }
     });
+
+    // Sync gutter vertical scroll with grid-wrap
+    document.getElementById("grid-wrap").addEventListener("scroll", function() {
+      const gb = document.querySelector(".gutter-body");
+      if (gb) gb.style.transform = "translateY(-" + this.scrollTop + "px)";
+    }, { passive: true });
 
     render();
   </script>
